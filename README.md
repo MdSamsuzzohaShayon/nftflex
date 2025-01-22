@@ -147,7 +147,7 @@ This project is licensed under the MIT License. See the LICENSE file for details
 ---
 
 ## **Contact**
-For any inquiries or feedback, please reach out at [your-email@example.com](mailto:your-email@example.com).
+For any inquiries or feedback, please reach out at [mdsamsuzzoha5222@gmail.com](mailto:mdsamsuzzoha5222@gmail.com).
 
 ---
 
