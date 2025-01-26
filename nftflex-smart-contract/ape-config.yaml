@@ -1,1 +1,4 @@
 name: nftflex
+
+dependencies:
+  - openzeppelin: 4.6.0

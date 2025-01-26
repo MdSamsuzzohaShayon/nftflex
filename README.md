@@ -1,7 +1,7 @@
 # NFT Rental Marketplace
 
 ## **Overview**
-The NFT Rental Marketplace is a decentralized platform that allows users to rent NFTs such as virtual real estate, gaming assets, or digital art for a specified period. Built using Python and Brownie, this project leverages blockchain technology to provide secure, automated rental agreements with innovative features to enhance user experience and maximize utility.
+The NFT Rental Marketplace is a decentralized platform that allows users to rent NFTs such as virtual real estate, gaming assets, or digital art for a specified period. Built using Python and ape, this project leverages blockchain technology to provide secure, automated rental agreements with innovative features to enhance user experience and maximize utility.
 
 ---
 
@@ -73,7 +73,7 @@ The NFT Rental Marketplace is a decentralized platform that allows users to rent
 - Chainlink for real-time price feeds and multi-crypto support
 
 ### **Development Tools**
-- **Brownie**: Python-based framework for Ethereum smart contract development
+- **ape**: Python-based framework for Ethereum smart contract development
 - **Web3.py**: Interaction with the blockchain
 
 ---
@@ -83,7 +83,7 @@ The NFT Rental Marketplace is a decentralized platform that allows users to rent
 ### **Prerequisites**
 - Python 3.9+
 - Node.js
-- Brownie
+- ape
 - MetaMask Wallet
 
 ### **Setup Instructions**
@@ -99,8 +99,9 @@ The NFT Rental Marketplace is a decentralized platform that allows users to rent
    ```
 3. Deploy contracts:
    ```bash
-   brownie compile
-   brownie run deploy
+   ape compile
+   ape run deploy
+   ape test
    ```
 4. Start the frontend:
    ```bash
@@ -154,4 +155,4 @@ For any inquiries or feedback, please reach out at [mdsamsuzzoha5222@gmail.com](
 ## **Acknowledgments**
 - OpenZeppelin for smart contract templates.
 - Chainlink for real-time price feeds.
-- The Brownie community for support and resources.
+- The ape community for support and resources.
