@@ -21,4 +21,5 @@ ape console
 
 ape test --network ethereum:local
 ape test -s -v
+ape test tests/test_NFTFlex.py -s
 
