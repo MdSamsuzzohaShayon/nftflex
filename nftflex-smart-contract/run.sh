@@ -8,3 +8,17 @@ ape pm uninstall OpenZeppelin/openzeppelin-contracts
 ape compile
 ape compile --include-dependencies
 ape pm compile
+
+
+ape accounts generate test_account
+ape accounts list
+
+ape console
+# accounts[0].balance
+# contract = accounts[0].deploy(project.NFTFlex)
+# accounts
+
+
+ape test --network ethereum:local
+ape test -s -v
+
