@@ -19,7 +19,14 @@ contract NFTFlex {
     mapping(uint256 => Rental) public s_rentals;
     uint256 private s_rentalCounter;
 
-    event RentalCreated(address indexed nftAddress, uint256 tokenId, uint256 pricePerHour);
+    event RentalCreated(
+        uint256 rentalId,
+        address indexed owner,
+        address nftAddress,
+        uint256 tokenId,
+        uint256 pricePerHour,
+        bool isFractional
+    );
 
     error NFTFlex__PriceMustBeGreaterThanZero();
 
@@ -57,8 +64,16 @@ contract NFTFlex {
             collateralToken: _collateralToken,
             collateralAmount: _collateralAmount
         });
-        s_rentalCounter++;
 
-        emit RentalCreated(_nftAddress, _tokenId, _pricePerHour);
+        emit RentalCreated(
+            s_rentalCounter,
+            msg.sender,
+            _nftAddress,
+            _tokenId,
+            _pricePerHour,
+            _isFractional
+        );
+
+        s_rentalCounter++;
     }
 }

@@ -35,11 +35,16 @@ def nft_contract(owner):
 
 
 
-print("Before minted NFT")
-
 @pytest.fixture 
 def minted_nft(nft_contract, owner):
-    nft_contract.mint(owner, sender=owner)  # ✅ No token_id argument
+    """Mints an NFT for the owner and returns the token ID."""
+    receipt = nft_contract.mint(owner, sender=owner)
+
+    # Extract token ID from Transfer event
+    event = list(receipt.events.filter(nft_contract.Transfer))[0]
+    token_id = event["tokenId"]
+
+    return token_id  # ✅ Now it properly returns the minted token ID
 
 
 
@@ -49,7 +54,7 @@ Testing begain
 
 
 
-# Step-1: Testing per hour rate is greater than 0
+# 🚀 STEP 1: Testing per hour rate is greater than 0
 def test_price_must_be_greater_than_zero(nft_flex_contract, owner):
     """Test that creating a rental with pricePerHour = 0 fails."""
     # Expect revert with custom error -> https://docs.apeworx.io/ape/stable/userguides/testing.html#testing-transaction-reverts
@@ -59,7 +64,7 @@ def test_price_must_be_greater_than_zero(nft_flex_contract, owner):
         )
 
 
-
+# 🚀 STEP 2: NFT Minting Validation
 def test_nft_minting(nft_contract, owner):
     """Ensure NFT was minted properly"""
     print(f"NFT Contract Address: {nft_contract.address}")  # ✅ Now this will work
@@ -79,6 +84,20 @@ def test_nft_minting(nft_contract, owner):
 
     assert owner_on_chain == owner.address
     assert nft_contract.ownerOf(token_id) == owner.address
+
+
+# 🚀 STEP 2: Rental Creation & Validation
+def test_create_rental(nft_flex_contract, nft_contract, owner, minted_nft):
+    """Owner should successfully create a rental"""
+    nft_contract = nft_contract.address
+    token_id = minted_nft
+    print(f"Token ID: {token_id}")
+    price_per_hour = 10 ** 18
+    collateral_amount = 5 * 10 ** 18
+    tx = nft_flex_contract.createRental(nft_address, token_id, price_per_hour, False, collateral_token, collateral_amount, sender=owner) #Calling createRentalfunction 
+    event = tx.events.filter(nft_flex_contract.RentalCreated)[0]
+    assert event.owner == owner.address 
+    assert event.tokenId == token_id
 
 
 
