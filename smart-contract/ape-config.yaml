@@ -1,0 +1,6 @@
+name: nftflex
+
+dependencies:
+  - name: OpenZeppelin
+    github: OpenZeppelin/openzeppelin-contracts
+    version: v5.2.0 # https://github.com/OpenZeppelin/openzeppelin-contracts
