@@ -60,7 +60,25 @@ def test_price_must_be_greater_than_zero(nft_flex_contract, owner):
 
 
 
+def test_nft_minting(nft_contract, owner):
+    """Ensure NFT was minted properly"""
+    print(f"NFT Contract Address: {nft_contract.address}")  # ✅ Now this will work
+    print(f"Owner Address: {owner.address}")  
 
+    tx_receipt = nft_contract.mint(owner, sender=owner)  
+    print("Logs:", tx_receipt.logs)
+    event = list(tx_receipt.events.filter(nft_contract.Transfer))[0]  # First event
+    token_id = event["tokenId"]
+
+    print(f"Minted Token ID: {token_id}")  
+    print(f"Checking NFT owner for token ID: {token_id}")
+
+    # Verify ownership on-chain
+    owner_on_chain = nft_contract.ownerOf(token_id)
+    print(f"NFT Owner (on-chain): {owner_on_chain}")
+
+    assert owner_on_chain == owner.address
+    assert nft_contract.ownerOf(token_id) == owner.address
 
 
 
