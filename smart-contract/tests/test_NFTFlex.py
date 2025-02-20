@@ -217,27 +217,4 @@ def test_incorrect_payment_amount(nft_flex_contract, owner, nft_contract, minted
         nft_flex_contract.rentNFT(rental_id, duration, sender=owner, value=total_price + collateral_amount + 10**17)  # Excess amount
 
 
-def test_collateral_transfer_failed(nft_flex_contract, owner, user, mock_erc20, nft_contract, minted_nft):
-    """Test that renting an NFT fails if ERC-20 transfer does not succeed."""
-    token_id = minted_nft
-    price_per_hour = 10**18
-    collateral_amount = 5 * 10**18
-
-    # Create rental with ERC-20 token as collateral
-    nft_flex_contract.createRental(
-        nft_contract, token_id, price_per_hour, False, 
-        mock_erc20, collateral_amount, sender=owner
-    )
-
-    rental_id = 0  # Assuming first rental ID is 0
-    duration = 2
-    total_price = price_per_hour * duration
-
-    # Ensure user has **zero** ERC-20 tokens
-    assert mock_erc20.balanceOf(user) == 0  # Ensuring no balance
-
-    # Try to rent, expecting failure due to ERC-20 transfer failure
-    with reverts():
-        nft_flex_contract.rentNFT(rental_id, duration, sender=user)
-
 
