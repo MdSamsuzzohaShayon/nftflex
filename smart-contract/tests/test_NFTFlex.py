@@ -3,6 +3,10 @@ import pytest
 from ape import accounts, project, reverts
 
 
+
+
+
+
 """
 Variables
 """
@@ -20,6 +24,17 @@ Setup for testing
 def owner():
     """Load an existing test account from Ape."""
     return accounts.test_accounts[1]  # Uses a test account
+
+@pytest.fixture
+def user(accounts):
+    """Returns a secondary test account (not the owner)."""
+    return accounts[1]  # Using the second available account
+
+@pytest.fixture
+def mock_erc20(owner):
+    """Deploys a mock ERC-20 token contract and returns it."""
+    return owner.deploy(project.MockERC20, "MockToken", "MKT", 18, 1_000_000 * 10**18)  # 1M tokens
+
 
 @pytest.fixture
 def nft_flex_contract(owner):
@@ -86,19 +101,120 @@ def test_nft_minting(nft_contract, owner):
     assert nft_contract.ownerOf(token_id) == owner.address
 
 
-# 🚀 STEP 2: Rental Creation & Validation
+# 🚀 STEP 3: Rental Creation & Validation
 def test_create_rental(nft_flex_contract, nft_contract, owner, minted_nft):
     """Owner should successfully create a rental"""
-    nft_contract = nft_contract.address
     token_id = minted_nft
     print(f"Token ID: {token_id}")
     price_per_hour = 10 ** 18
     collateral_amount = 5 * 10 ** 18
     tx = nft_flex_contract.createRental(nft_address, token_id, price_per_hour, False, collateral_token, collateral_amount, sender=owner) #Calling createRentalfunction 
-    event = tx.events.filter(nft_flex_contract.RentalCreated)[0]
+    event = tx.events.filter(nft_flex_contract.NFTFlex__RentalCreated)[0]
     assert event.owner == owner.address 
     assert event.tokenId == token_id
+    assert nft_contract.nextTokenId() == 2
 
+
+
+
+def test_rental_must_exist(nft_flex_contract, owner):
+    """Test that renting a non-existent rental fails."""
+    non_existent_rental_id = 9999  # A rental ID that does not exist
+    duration = 1
+
+    with reverts():
+        nft_flex_contract.rentNFT(non_existent_rental_id, duration, sender=owner)
+
+
+
+def test_nft_already_rented(nft_flex_contract, owner, nft_contract, minted_nft):
+    """Test that trying to rent an already rented NFT fails."""
+    token_id = minted_nft
+    price_per_hour = 10**18
+    collateral_amount = 5 * 10**18
+
+    # Step 1: Create a rental
+    nft_flex_contract.createRental(nft_contract, token_id, price_per_hour, False, "0x0000000000000000000000000000000000000000", collateral_amount, sender=owner)
+
+    rental_id = 0  # Assuming first rental ID is 0
+    duration = 2
+
+    # Step 2: Rent the NFT (send correct ETH amount)
+    total_price = price_per_hour * duration
+    nft_flex_contract.rentNFT(rental_id, duration, sender=owner, value=total_price + collateral_amount)
+
+    # Step 3: Try renting again and expect failure (no need to send ETH)
+    with reverts():
+        nft_flex_contract.rentNFT(rental_id, duration, sender=owner)
+
+
+
+def test_duration_must_be_greater_than_zero(nft_flex_contract, owner, nft_contract, minted_nft):
+    """Test that renting with a duration of 0 fails."""
+    token_id = minted_nft
+    price_per_hour = 10**18
+    collateral_amount = 5 * 10**18
+
+    # Step 1: Create a rental
+    nft_flex_contract.createRental(nft_address, token_id, price_per_hour, False, collateral_token, collateral_amount, sender=owner)
+
+    rental_id = 0  # Assuming first rental ID is 0
+    invalid_duration = 0  # Invalid duration
+
+    with reverts():
+        nft_flex_contract.rentNFT(rental_id, invalid_duration, sender=owner)
+
+
+
+
+def test_incorrect_payment_amount(nft_flex_contract, owner, nft_contract, minted_nft):
+    """Test that renting an NFT with incorrect ETH amount fails."""
+    token_id = minted_nft
+    price_per_hour = 10**18
+    collateral_amount = 5 * 10**18
+
+    # Create rental with native currency (ETH) as collateral
+    nft_flex_contract.createRental(
+        nft_contract, token_id, price_per_hour, False, 
+        "0x0000000000000000000000000000000000000000", collateral_amount, sender=owner
+    )
+
+    rental_id = 0  # Assuming first rental ID is 0
+    duration = 2
+    total_price = price_per_hour * duration
+
+    # Try to rent with insufficient ETH (less than totalPrice + collateral)
+    with reverts():
+        nft_flex_contract.rentNFT(rental_id, duration, sender=owner, value=total_price)  # Missing collateral
+
+    # Try to rent with too much ETH (if strict check applies)
+    with reverts():
+        nft_flex_contract.rentNFT(rental_id, duration, sender=owner, value=total_price + collateral_amount + 10**17)  # Excess amount
+
+
+def test_incorrect_payment_amount(nft_flex_contract, owner, nft_contract, minted_nft):
+    """Test that renting an NFT with incorrect ETH amount fails."""
+    token_id = minted_nft
+    price_per_hour = 10**18
+    collateral_amount = 5 * 10**18
+
+    # Create rental with native currency (ETH) as collateral
+    nft_flex_contract.createRental(
+        nft_contract, token_id, price_per_hour, False, 
+        "0x0000000000000000000000000000000000000000", collateral_amount, sender=owner
+    )
+
+    rental_id = 0  # Assuming first rental ID is 0
+    duration = 2
+    total_price = price_per_hour * duration
+
+    # Try to rent with insufficient ETH (less than totalPrice + collateral)
+    with reverts():
+        nft_flex_contract.rentNFT(rental_id, duration, sender=owner, value=total_price)  # Missing collateral
+
+    # Try to rent with too much ETH (if strict check applies)
+    with reverts():
+        nft_flex_contract.rentNFT(rental_id, duration, sender=owner, value=total_price + collateral_amount + 10**17)  # Excess amount
 
 
 
