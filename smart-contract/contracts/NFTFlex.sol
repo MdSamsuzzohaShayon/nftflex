@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 // https://docs.soliditylang.org/en/latest/style-guide.html#order-of-layout
 contract NFTFlex {
@@ -41,6 +42,7 @@ contract NFTFlex {
     error NFTFlex__CollateralTransferFailed();
     error NFTFlex__OnlyRenterCanEndRental();
     error NFTFlex__RentalPeriodNotEnded();
+    error NFTFlex__SenderIsNotOwnerOfTheNFT();
 
     /**
      * @dev Allows the owner of an NFT to list it for rental.
@@ -59,6 +61,10 @@ contract NFTFlex {
         address _collateralToken,
         uint256 _collateralAmount
     ) external {
+        if(IERC721(_nftAddress).ownerOf(_tokenId) != msg.sender){
+            revert NFTFlex__SenderIsNotOwnerOfTheNFT();
+        }
+
         if (_pricePerHour == 0) {
             revert NFTFlex__PriceMustBeGreaterThanZero();
         }
