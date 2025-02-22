@@ -1,4 +1,5 @@
 # Docs -> https://docs.apeworx.io/ape/latest/userguides/scripts.html
+# Deploy -> https://docs.apeworx.io/ape/stable/userguides/contracts.html
 
 import click
 
