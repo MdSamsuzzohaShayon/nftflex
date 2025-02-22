@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 // https://docs.soliditylang.org/en/latest/style-guide.html#order-of-layout
 contract NFTFlex {
@@ -39,6 +40,9 @@ contract NFTFlex {
     error NFTFlex__DurationMustBeGreaterThanZero();
     error NFTFlex__IncorrectPaymentAmount();
     error NFTFlex__CollateralTransferFailed();
+    error NFTFlex__OnlyRenterCanEndRental();
+    error NFTFlex__RentalPeriodNotEnded();
+    error NFTFlex__SenderIsNotOwnerOfTheNFT();
 
     /**
      * @dev Allows the owner of an NFT to list it for rental.
@@ -57,6 +61,10 @@ contract NFTFlex {
         address _collateralToken,
         uint256 _collateralAmount
     ) external {
+        if(IERC721(_nftAddress).ownerOf(_tokenId) != msg.sender){
+            revert NFTFlex__SenderIsNotOwnerOfTheNFT();
+        }
+
         if (_pricePerHour == 0) {
             revert NFTFlex__PriceMustBeGreaterThanZero();
         }
@@ -98,7 +106,6 @@ contract NFTFlex {
             revert NFTFlex__DurationMustBeGreaterThanZero(); // ✅ Fixes invalid duration check
         }
 
-
         uint256 collateral = rental.collateralAmount;
         uint256 totalPrice = rental.pricePerHour * _duration;
 
@@ -120,12 +127,27 @@ contract NFTFlex {
             }
         }
 
-        
         // Assign renter and start rental
         rental.renter = msg.sender;
         rental.startTime = block.timestamp;
         rental.endTime = block.timestamp + (_duration * 1 hours);
 
         emit NFTFlex__RentalStarted(_rentalId, msg.sender, rental.startTime, rental.endTime, collateral);
+    }
+
+    /**
+     * @dev Allows ther renter to end the rental and return tyhe NFT.
+     * Collateral is refunded if all conditions are met.
+     * @param _rentalId ID of rental to end.
+     */
+    function endRental(uint256 _rentalId) external {
+        Rental storage rental = s_rentals[_rentalId];
+        if (msg.sender != rental.renter) {
+            revert NFTFlex__OnlyRenterCanEndRental();
+        }
+
+        if (block.timestamp >= rental.endTime) {
+            revert NFTFlex__RentalPeriodNotEnded();
+        }
     }
 }

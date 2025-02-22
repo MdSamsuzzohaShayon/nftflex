@@ -13,3 +13,6 @@ def main():
     account = project.accounts.load("my_account_name")
     contract = account.deploy(project.NFTRentalMarketplace)
     print(f"Contract deployed at: {contract.address}")
+
+
+# ape run scripts/deploy.py --network ethereum:goerli
