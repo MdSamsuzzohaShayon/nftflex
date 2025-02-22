@@ -1,7 +1,7 @@
 # Docs -> https://docs.apeworx.io/ape/latest/userguides/testing.html
 import pytest
 import time
-from ape import accounts, project, reverts, exceptions
+from ape import accounts, project, chain, exceptions
 from eth_tester.exceptions import TransactionFailed
 
 
@@ -208,11 +208,10 @@ def test_incorrect_payment_amount(nft_flex_contract, owner, nft_address, minted_
     assert isinstance(exc_info2.value, nft_flex_contract.NFTFlex__IncorrectPaymentAmount)
 
 
-# 🚀 STEP 2: rentNFT creation & Validation
-# 🚀 STEP 2: rentNFT creation & Validation
+# 🚀 STEP 4: rentNFT creation & Validation
 def test_rent_nft_successfully(nft_flex_contract, nft_contract, nft_address, owner, user):
     """
-    Test that a user can successfully rent an NFT.
+    Test that a user can successfully rent an NFT and that the NFTFlex__RentalStarted event is emitted.
     """
 
     # 🚀 STEP 1: Owner mints an NFT
@@ -239,8 +238,8 @@ def test_rent_nft_successfully(nft_flex_contract, nft_contract, nft_address, own
     total_price = price_per_hour * duration
     total_payment = total_price + collateral_amount  # Must include collateral
 
-    # If using ETH as collateral, send ETH payment
-    nft_flex_contract.rentNFT(
+    # Capture the transaction receipt
+    receipt = nft_flex_contract.rentNFT(
         rental_id,
         duration,
         value=total_payment,  # ✅ Send correct amount
@@ -250,15 +249,108 @@ def test_rent_nft_successfully(nft_flex_contract, nft_contract, nft_address, own
     # 🚀 STEP 4: Verify rental details
     rental = nft_flex_contract.s_rentals(rental_id)
 
-    assert rental.nftAddress == nft_address
+    assert rental.nftAddress == nft_contract.address
     assert rental.tokenId == minted_token_id
     assert rental.owner == owner
     assert rental.renter == user  # ✅ Ensure correct renter
     assert rental.startTime > 0  # ✅ Rental start time must be set
     assert rental.endTime == rental.startTime + (duration * 3600)  # ✅ Correct end time
 
+    # 🚀 STEP 5: Verify the event NFTFlex__RentalStarted was emitted
+    event = list(receipt.events.filter(nft_flex_contract.NFTFlex__RentalStarted))[0]
+
+    assert event["rentalId"] == rental_id  # ✅ Ensure correct rental ID
+    assert event["renter"] == user  # ✅ Ensure correct renter address
+    assert event["startTime"] == rental.startTime  # ✅ Ensure correct start time
+    assert event["endTime"] == rental.endTime  # ✅ Ensure correct end time
+    assert event["collateralAmount"] == rental.collateralAmount  # ✅ Ensure correct end time
 
 
+
+
+
+
+
+# 🚀 STEP 3: Error checking in endRental
+def test_only_renter_can_end_rental(nft_flex_contract, owner, user, minted_nft, nft_address):
+    """
+    Ensures that only the renter can call endRental.
+    """
+
+    # Create a rental
+    nft_flex_contract.createRental(
+        nft_address, minted_nft, price_per_hour, is_fractional, collateral_token, collateral_amount, sender=owner
+    )
+
+    # Rent the NFT
+    nft_flex_contract.rentNFT(rental_id, duration, value=price_per_hour * duration + collateral_amount, sender=user)
+
+    # Different user (not renter) tries to end rental
+    with pytest.raises(exceptions.ContractLogicError) as exc_info:
+        nft_flex_contract.endRental(rental_id, sender=owner)  # ❌ Owner tries to end rental
+
+    assert "NFTFlex__OnlyRenterCanEndRental" == exc_info.type.__name__
+    assert isinstance(exc_info.value, nft_flex_contract.NFTFlex__OnlyRenterCanEndRental)
+
+
+
+def test_cannot_end_rental_early(nft_flex_contract, owner, user, minted_nft, nft_address):
+    """
+    Ensures the renter cannot end the rental before the rental period expires.
+    """
+
+    # Create rental
+    nft_flex_contract.createRental(
+        nft_address, minted_nft, price_per_hour, is_fractional, collateral_token, collateral_amount, sender=owner
+    )
+
+    # Rent the NFT
+    nft_flex_contract.rentNFT(rental_id, duration, value=price_per_hour * duration + collateral_amount, sender=user)
+
+    # Attempt to end rental early
+    with pytest.raises(exceptions.ContractLogicError) as exc_info:
+        nft_flex_contract.endRental(rental_id, sender=user)  # ❌ Ending too early
+
+    assert "NFTFlex__RentalPeriodNotEnded" == exc_info.type.__name__
+    assert isinstance(exc_info.value, nft_flex_contract.NFTFlex__RentalPeriodNotEnded)
+
+
+
+def test_renter_can_end_rental_after_expiry(nft_flex_contract, owner, user, minted_nft, nft_address):
+    """
+    Ensures that after rental expiry, the renter can successfully end the rental and get a collateral refund.
+    """
+
+    # Create rental
+    nft_flex_contract.createRental(
+        nft_address, minted_nft, price_per_hour, is_fractional, collateral_token, collateral_amount, sender=owner
+    )
+
+    # Rent NFT
+    duration = 1  # Set rental duration to 1 minute
+    nft_flex_contract.rentNFT(rental_id, duration, value=price_per_hour * duration + collateral_amount, sender=user)
+
+    # Get the rental end time
+    rental = nft_flex_contract.s_rentals(rental_id)
+    rental_end_time = rental["endTime"]
+
+    # Explicitly increase blockchain time to just after the rental end time
+    new_time = rental_end_time + 1  # Move time forward by 1 second after the rental end time
+    chain.mine(timestamp=new_time)  # Mine a block with updated timestamp
+
+    # End rental
+    tx = nft_flex_contract.endRental(rental_id, sender=user)
+
+    # Check events
+    event = list(tx.events.filter(nft_flex_contract.NFTFlex__RentalEnded))[0]
+    assert event["rentalId"] == rental_id
+    assert event["renter"] == user
+
+    # Check rental state reset
+    rental = nft_flex_contract.s_rentals(rental_id)
+    assert rental["renter"] == "0x0000000000000000000000000000000000000000"  # Reset renter
+    assert rental["startTime"] == 0
+    assert rental["endTime"] == 0
 
 
 

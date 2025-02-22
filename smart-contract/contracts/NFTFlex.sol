@@ -6,6 +6,7 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 // https://docs.soliditylang.org/en/latest/style-guide.html#order-of-layout
 contract NFTFlex {
+    // Structs
     struct Rental {
         address nftAddress;
         uint256 tokenId;
@@ -19,9 +20,11 @@ contract NFTFlex {
         uint256 collateralAmount;
     }
 
+    // Variables
     mapping(uint256 => Rental) public s_rentals;
     uint256 private s_rentalCounter;
 
+    // Events
     event NFTFlex__RentalCreated(
         uint256 rentalId,
         address indexed owner,
@@ -31,9 +34,11 @@ contract NFTFlex {
         bool isFractional
     );
     event NFTFlex__RentalStarted(
-        uint256 rentalId, address indexed renter, uint256 startTime, uint256 endTime, uint256 collateraAmoount
+        uint256 rentalId, address indexed renter, uint256 startTime, uint256 endTime, uint256 collateralAmount
     );
+    event NFTFlex__RentalEnded(uint256 rentalId, address indexed renter);
 
+    // Errors
     error NFTFlex__PriceMustBeGreaterThanZero();
     error NFTFlex__RentalDoesNotExist();
     error NFTFlex__NFTAlreadyRented();
@@ -43,6 +48,7 @@ contract NFTFlex {
     error NFTFlex__OnlyRenterCanEndRental();
     error NFTFlex__RentalPeriodNotEnded();
     error NFTFlex__SenderIsNotOwnerOfTheNFT();
+    error NFTFlex__CollateralRefundFailed();
 
     /**
      * @dev Allows the owner of an NFT to list it for rental.
@@ -61,7 +67,7 @@ contract NFTFlex {
         address _collateralToken,
         uint256 _collateralAmount
     ) external {
-        if(IERC721(_nftAddress).ownerOf(_tokenId) != msg.sender){
+        if (IERC721(_nftAddress).ownerOf(_tokenId) != msg.sender) {
             revert NFTFlex__SenderIsNotOwnerOfTheNFT();
         }
 
@@ -142,12 +148,37 @@ contract NFTFlex {
      */
     function endRental(uint256 _rentalId) external {
         Rental storage rental = s_rentals[_rentalId];
+
         if (msg.sender != rental.renter) {
             revert NFTFlex__OnlyRenterCanEndRental();
         }
 
-        if (block.timestamp >= rental.endTime) {
+        if (block.timestamp < rental.endTime) {
+            // ✅ Fix rental period check
             revert NFTFlex__RentalPeriodNotEnded();
         }
+
+        // Reset rental state
+        rental.renter = address(0);
+        rental.startTime = 0;
+        rental.endTime = 0;
+
+        // Refund collateral
+        uint256 collateral = rental.collateralAmount;
+        if (rental.collateralToken == address(0)) {
+            // Refund native ETH collateral
+            (bool success,) = msg.sender.call{value: collateral}("");
+            if (!success) {
+                revert NFTFlex__CollateralRefundFailed();
+            }
+        } else {
+            // Refund ERC-20 collateral
+            IERC20 collateralToken = IERC20(rental.collateralToken);
+            if (!collateralToken.transfer(msg.sender, collateral)) {
+                revert NFTFlex__CollateralRefundFailed();
+            }
+        }
+
+        emit NFTFlex__RentalEnded(_rentalId, msg.sender);
     }
 }
