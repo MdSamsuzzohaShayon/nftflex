@@ -49,6 +49,10 @@ contract NFTFlex {
     error NFTFlex__RentalPeriodNotEnded();
     error NFTFlex__SenderIsNotOwnerOfTheNFT();
     error NFTFlex__CollateralRefundFailed();
+    error NFTFlex__OnlyOwnerCanWithdrawEarnings();
+    error NFTFlex__RentalStillActive();
+    error NFTFlex__FailedTransferingETHToOwner();
+    error NFTFlex__EarningTransferFailed();
 
     /**
      * @dev Allows the owner of an NFT to list it for rental.
@@ -181,4 +185,61 @@ contract NFTFlex {
 
         emit NFTFlex__RentalEnded(_rentalId, msg.sender);
     }
+
+
+    /**
+     * @dev Allows the owner to withdraw earnings from the rental.
+     * @param _rentalId ID of the rental to withdraw earnings for.
+     *
+     * @dev Allows the owner of an NFT rental to withdraw earnings after the rental period has ended.
+     * The earnings are calculated based on the rental duration and price per hour.
+     * 
+     * Requirements:
+     * - Only the owner of the NFT rental can withdraw earnings.
+     * - The rental must have been completed (i.e., there must be a renter, and the rental period should have ended).
+     * - Transfers earnings in either native ETH or ERC-20 tokens based on the collateral type.
+     * 
+     * @param _rentalId ID of the rental for which earnings need to be withdrawn.
+     */
+    function withdrawEarnings(uint256 _rentalId) external {
+        // Fetch the rental details from storage
+        Rental storage rental = s_rentals[_rentalId];
+
+        // Ensure that only the owner of the NFT can withdraw earnings
+        if (msg.sender != rental.owner) {
+            revert NFTFlex__OnlyOwnerCanWithdrawEarnings();
+        }
+
+        // Ensure that the rental has ended before withdrawing earnings
+        if (rental.renter == address(0) || block.timestamp < rental.endTime) {
+            revert NFTFlex__RentalStillActive();
+        }
+
+        // Calculate total earnings: price per hour * number of hours rented
+        uint256 totalEarnings = rental.pricePerHour * ((rental.endTime - rental.startTime) / 1 hours);
+
+        // Ensure there are earnings to withdraw
+        if (totalEarnings == 0) {
+            revert NFTFlex__EarningTransferFailed();
+        }
+
+        // Handle payment transfer logic based on the collateral type (ETH or ERC-20)
+        if (rental.collateralToken == address(0)) {
+            // Transfer earnings in ETH to the NFT owner
+            (bool success, ) = rental.owner.call{value: totalEarnings}("");
+            if (!success) {
+                revert NFTFlex__FailedTransferingETHToOwner();
+            }
+        } else {
+            // Transfer earnings in ERC-20 token
+            IERC20 collateralToken = IERC20(rental.collateralToken);
+            if (!collateralToken.transfer(rental.owner, totalEarnings)) {
+                revert NFTFlex__EarningTransferFailed();
+            }
+        }
+
+        // Reset rental earnings (optional: if we want to keep track of withdrawn earnings separately)
+        rental.pricePerHour = 0;
+    }
+
 }
