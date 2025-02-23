@@ -28,13 +28,22 @@ def owner():
 @pytest.fixture
 def user():
     """Returns a secondary test account (not the owner)."""
-    return accounts.test_accounts[1]  # Uses a different test account
+    new_user = accounts.test_accounts[1]  # Uses a different test account
+    # mock_erc20.mint(new_user, 10**20, sender=owner)
+    return new_user
 
 
 @pytest.fixture
 def mock_erc20(owner):
     """Deploys a mock ERC-20 token contract and returns it."""
     return owner.deploy(project.MockERC20, "MockToken", "MKT", 18, 1_000_000 * 10**18)  # 1M tokens
+
+@pytest.fixture
+def funded_user(user, mock_erc20, owner):
+    amount = 10**20  # Give user 100 MKT tokens
+    mock_erc20.transfer(user, amount, sender=owner)
+    return user
+
 
 
 @pytest.fixture
@@ -271,7 +280,7 @@ def test_rent_nft_successfully(nft_flex_contract, nft_contract, nft_address, own
 
 
 
-# 🚀 STEP 3: Error checking in endRental
+# 🚀 STEP 5: Error checking in endRental
 def test_only_renter_can_end_rental(nft_flex_contract, owner, user, minted_nft, nft_address):
     """
     Ensures that only the renter can call endRental.
@@ -315,7 +324,7 @@ def test_cannot_end_rental_early(nft_flex_contract, owner, user, minted_nft, nft
     assert isinstance(exc_info.value, nft_flex_contract.NFTFlex__RentalPeriodNotEnded)
 
 
-
+# 🚀 STEP 6: rentNFT creation & Validation
 def test_renter_can_end_rental_after_expiry(nft_flex_contract, owner, user, minted_nft, nft_address):
     """
     Ensures that after rental expiry, the renter can successfully end the rental and get a collateral refund.
@@ -354,3 +363,198 @@ def test_renter_can_end_rental_after_expiry(nft_flex_contract, owner, user, mint
 
 
 
+# 🚀 STEP 7: Error checking and Test that only the owner can withdraw earnings
+def test_only_owner_can_withdraw(nft_flex_contract, nft_contract, nft_address, owner, user, minted_nft):
+    """
+    Ensures that only the owner of the rental can withdraw earnings.
+    """
+    
+    # Step 1: Owner lists NFT for rental
+    nft_flex_contract.createRental(
+        nft_address,
+        minted_nft,
+        price_per_hour,
+        is_fractional,
+        collateral_token,
+        collateral_amount,
+        sender=owner
+    )
+
+    # Step 2: User rents the NFT
+    nft_flex_contract.rentNFT(rental_id, duration, value=price_per_hour * duration + collateral_amount, sender=user)
+
+    # Step 3: Try withdrawing as a non-owner
+    with pytest.raises(exceptions.ContractLogicError) as exc_info:
+        nft_flex_contract.withdrawEarnings(rental_id, sender=user)  # ❌ User is not the owner
+
+    assert "NFTFlex__OnlyOwnerCanWithdrawEarnings" == exc_info.type.__name__
+    assert isinstance(exc_info.value, nft_flex_contract.NFTFlex__OnlyOwnerCanWithdrawEarnings)
+
+
+def test_cannot_withdraw_before_rental_ends(nft_flex_contract, nft_contract, nft_address, owner, user, minted_nft):
+    """
+    Ensures that the owner cannot withdraw earnings before the rental period ends.
+    """
+    
+    # Step 1: Owner lists NFT for rental
+    nft_flex_contract.createRental(
+        nft_address,
+        minted_nft,
+        price_per_hour,
+        is_fractional,
+        collateral_token,
+        collateral_amount,
+        sender=owner
+    )
+
+    # Step 2: User starts rental
+    nft_flex_contract.rentNFT(rental_id, duration, value=price_per_hour * duration + collateral_amount, sender=user)
+
+    # Step 3: Owner tries to withdraw earnings too early
+    with pytest.raises(exceptions.ContractLogicError) as exc_info:
+        nft_flex_contract.withdrawEarnings(rental_id, sender=owner)
+
+    assert "NFTFlex__RentalStillActive" == exc_info.type.__name__
+    assert isinstance(exc_info.value, nft_flex_contract.NFTFlex__RentalStillActive)
+
+
+def test_cannot_withdraw_zero_earnings(nft_flex_contract, minted_nft, nft_address, owner, user):
+    """
+    Ensures that attempting to withdraw when there are no earnings fails.
+    """
+
+    # Step 1: Owner lists NFT for rental
+    nft_flex_contract.createRental(
+        nft_address,
+        minted_nft,
+        price_per_hour,
+        is_fractional,
+        collateral_token,
+        collateral_amount,
+        sender=owner
+    )
+
+    # Calculate the total payment required (price_per_hour * duration + collateral_amount)
+    total_payment = price_per_hour * duration + collateral_amount
+
+    # Start the rental with duration = 0
+    nft_flex_contract.rentNFT(rental_id, duration, value=total_payment, sender=user)
+
+    # Step 3: Fast forward time to ensure rental has ended
+    # Get the rental end time
+    rental = nft_flex_contract.s_rentals(rental_id)
+    rental_end_time = rental["endTime"]
+
+    # Explicitly increase blockchain time to just after the rental end time
+    new_time = rental_end_time + 1  # Move time forward by 1 second after the rental end time
+    chain.mine(timestamp=new_time)  # Mine a block with updated timestamp
+
+    # Withdraw all earnings from here then balance to withdraw will be zero
+    nft_flex_contract.withdrawEarnings(rental_id, sender=owner)
+
+    # Step 4: Owner attempts to withdraw with zero earnings
+    with pytest.raises(exceptions.ContractLogicError) as exc_info:
+        nft_flex_contract.withdrawEarnings(rental_id, sender=owner)  # Owner attempts to withdraw
+
+    # Ensure the correct error is raised
+    assert "NFTFlex__EarningTransferFailed" == exc_info.type.__name__
+    assert isinstance(exc_info.value, nft_flex_contract.NFTFlex__EarningTransferFailed)
+
+
+
+
+# 🚀 STEP 8: Test successful ETH withdrawal
+def test_successful_eth_withdrawal(nft_flex_contract, nft_contract, nft_address, owner, user, minted_nft):
+    """
+    Ensures that the owner successfully withdraws ETH earnings after rental completion.
+    """
+
+    # Step 1: Owner lists NFT for rental
+    nft_flex_contract.createRental(
+        nft_address,
+        minted_nft,
+        price_per_hour,
+        is_fractional,
+        collateral_token,
+        collateral_amount,
+        sender=owner
+    )
+
+    total_price = price_per_hour * duration
+    total_payment = total_price + collateral_amount  # Must include collateral
+
+    # Step 2: User starts rental
+    nft_flex_contract.rentNFT(rental_id, duration, value=total_payment, sender=user)
+
+    # Step 3: Fast-forward time to after rental ends
+    rental = nft_flex_contract.s_rentals(rental_id)
+    rental_end_time = rental["endTime"]
+
+    # Move blockchain time forward to just after the rental end time
+    new_time = rental_end_time + 1  # Move time forward by 1 second after the rental end time
+    chain.mine(timestamp=new_time)  # Mine a block with updated timestamp
+
+    # Step 4: Owner withdraws earnings
+    initial_balance = owner.balance
+    tx = nft_flex_contract.withdrawEarnings(rental_id, sender=owner)
+    
+    # Step 5: Validate balance change
+    expected_earnings = price_per_hour * duration
+    gas_cost = tx.gas_used * tx.gas_price  # Calculate gas cost
+
+    print(f"Initial balance: {initial_balance}")
+    print(f"Expected earnings: {expected_earnings}")
+    print(f"Gas cost: {gas_cost}")
+    print(f"Final balance: {owner.balance}")
+    assert owner.balance == initial_balance + expected_earnings - gas_cost
+
+
+
+
+# 🚀 STEP 5: Test successful ERC-20 withdrawal
+# 🚀 STEP 5: Test successful ERC-20 withdrawal
+def test_successful_erc20_withdrawal(nft_flex_contract, nft_contract, nft_address, owner, funded_user, minted_nft, mock_erc20):
+    """
+    Ensures that the owner successfully withdraws ERC-20 earnings after rental completion.
+    """
+
+    # Step 1: Transfer ERC-20 tokens to contract
+    mock_erc20.transfer(nft_flex_contract.address, collateral_amount * duration, sender=funded_user)
+
+    # Step 2: Owner lists NFT for rental
+    nft_flex_contract.createRental(
+        nft_address,
+        minted_nft,
+        price_per_hour,
+        is_fractional,
+        mock_erc20.address,  # Using ERC-20
+        collateral_amount,
+        sender=owner
+    )
+
+    total_price = price_per_hour * duration
+    total_payment = total_price + collateral_amount  # Must include collateral
+
+    # Approve the contract to spend user's ERC-20 tokens
+    mock_erc20.approve(nft_flex_contract.address, total_payment, sender=funded_user)
+
+    # Step 3: User starts rental with ERC-20 tokens
+    nft_flex_contract.rentNFT(rental_id, duration, sender=funded_user)
+
+    # Step 4: Fast-forward time to after rental ends
+    rental = nft_flex_contract.s_rentals(rental_id)
+    rental_end_time = rental["endTime"]
+
+    # Move blockchain time forward to just after the rental end time
+    new_time = rental_end_time + 1  # Move time forward by 1 second after the rental end time
+    chain.mine(timestamp=new_time)  # Mine a block with updated timestamp
+
+    # Step 5: Check owner's initial ERC-20 balance
+    initial_balance = mock_erc20.balanceOf(owner)
+
+    # Step 6: Owner withdraws earnings
+    nft_flex_contract.withdrawEarnings(rental_id, sender=owner)
+
+    # Step 7: Validate ERC-20 balance increase
+    expected_earnings = price_per_hour * duration
+    assert mock_erc20.balanceOf(owner) == initial_balance + expected_earnings
