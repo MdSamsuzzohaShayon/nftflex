@@ -1,19 +1,24 @@
-# Docs -> https://docs.apeworx.io/ape/latest/userguides/scripts.html
-# Deploy -> https://docs.apeworx.io/ape/stable/userguides/contracts.html
+# ApeWorX Deployment Script for Sepolia & Local Anvil Network
+# Docs: https://docs.apeworx.io/ape/latest/userguides/scripts.html
+# Scripts -> https://docs.apeworx.io/ape/stable/userguides/scripts.html
 
 import click
+from ape import accounts, project
+from ape.cli import ConnectedProviderCommand
 
-@click.command()
+@click.command(cls=ConnectedProviderCommand)
 def cli():
-    print("Hello world!")
+    # Load the deployer account
+    deployer = accounts[0]  # Uses the first available local account
 
+    # Deploy contract
+    contract = deployer.deploy(project.NFTFlex)
 
-from ape import project
-
-def main():
-    account = project.accounts.load("my_account_name")
-    contract = account.deploy(project.NFTRentalMarketplace)
+    # Print deployed contract address
     print(f"Contract deployed at: {contract.address}")
 
 
-# ape run scripts/deploy.py --network ethereum:goerli
+
+# Run with:
+# Local Anvil:   ape run deploy --network ethereum:local
+# Sepolia Testnet: ape run deploy --network ethereum:sepolia

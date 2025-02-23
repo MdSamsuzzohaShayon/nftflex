@@ -3,4 +3,22 @@ name: nftflex
 dependencies:
   - name: OpenZeppelin
     github: OpenZeppelin/openzeppelin-contracts
-    version: v5.2.0 # https://github.com/OpenZeppelin/openzeppelin-contracts
+    version: v5.2.0 # OpenZeppelin contracts version
+
+networks:
+  ethereum:
+    sepolia:
+      default_provider: infura
+    local:
+      default_provider: foundry
+
+providers:
+  infura:
+    ethereum:
+      sepolia:
+        api_key: ${INFURA_API_KEY}
+
+  foundry:
+    ethereum:
+      local:
+        fork: sepolia  # Optional: Fork Sepolia for local testing

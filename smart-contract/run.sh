@@ -23,3 +23,16 @@ ape test --network ethereum:local
 ape test -s -v
 ape test tests/test_NFTFlex.py -s
 
+
+
+
+
+
+# Deployment
+pip install eth-ape ape-solidity ape-hardhat ape-infura
+# Run with:
+ape run deploy --network local
+ape run deploy --network sepolia
+ape console --network ethereum:local
+ape networks list
+
