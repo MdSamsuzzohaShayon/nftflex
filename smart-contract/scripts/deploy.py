@@ -6,7 +6,7 @@ from ape import accounts, project
 
 def main():
     # Load an account to deploy the contracts
-    account = accounts.load("account6")  # Replace with your account alias
+    account = accounts.test_accounts[0]  # ✅ Uses Ape's native test account
 
     # Deploy the SimpleNFT contract
     print("Deploying SimpleNFT...")

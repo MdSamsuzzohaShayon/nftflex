@@ -34,23 +34,27 @@ pip install eth-ape ape-solidity ape-hardhat ape-infura
 ape console --network ethereum:local
 ape networks list
 
-
+# Docs -> https://docs.apeworx.io/ape/stable/userguides/accounts.html
 # Create accounts using ape
 ape accounts generate account1
 ape accounts generate account2
 ape accounts generate account3
-# Import accounts from ape
-ape accounts import account1
+
+# Import accounts from anvil
 ape accounts import account5
 ape accounts import account6
 
 # Deploy with local ethereum (Configured in ape-config.yaml)
-ape run deploy --network ethereum:local
+# ape run deploy --network ethereum:local
 
 # To check balances for all accounts
 ape console
 # for account in accounts:
 #     print(f"Account: {account.address}, Balance: {account.balance / 1e18:.6f} ETH")
+
+
+ape run deploy --network ethereum:test
+
 
 
 
