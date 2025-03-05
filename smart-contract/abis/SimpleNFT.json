@@ -228,6 +228,10 @@
             {
                 "name": "to",
                 "type": "address"
+            },
+            {
+                "name": "metadataUrl",
+                "type": "string"
             }
         ],
         "outputs": [
@@ -360,6 +364,23 @@
         "name": "symbol",
         "type": "function",
         "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "string"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "name": "tokenMetadataUrl",
+        "type": "function",
+        "inputs": [
+            {
+                "name": "tokenId",
+                "type": "uint256"
+            }
+        ],
         "outputs": [
             {
                 "name": "",
