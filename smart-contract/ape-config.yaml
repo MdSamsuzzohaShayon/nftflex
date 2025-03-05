@@ -1,6 +1,31 @@
 name: nftflex
 
+ # Docs -> https://docs.apeworx.io/ape/stable/userguides/config.html
+
 dependencies:
   - name: OpenZeppelin
     github: OpenZeppelin/openzeppelin-contracts
-    version: v5.2.0 # https://github.com/OpenZeppelin/openzeppelin-contracts
+    version: v5.2.0  # OpenZeppelin contracts version
+
+networks:
+  ethereum:
+    local:
+      default_provider: anvil  # Set Anvil as the default provider for local testing
+
+  test:
+    mnemonic: test test test test test test test test test test test junk
+    number_of_accounts: 5
+    balance: 100_000 ETH
+
+providers:
+  test:
+    fork: false  # No forking needed for built-in test provider
+    mnemonic: test test test test test test test test test test test junk
+    number_of_accounts: 5
+    balance: 100_000 ETH
+
+  anvil:
+    fork: false  # Disable forking unless needed
+    host: http://127.0.0.1
+    port: 8545
+
