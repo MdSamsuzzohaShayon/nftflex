@@ -4,6 +4,7 @@
 ape compile
 ape pm list
 
+ape plugins install foundry
 ape pm uninstall OpenZeppelin/openzeppelin-contracts
 ape compile
 ape compile --include-dependencies
@@ -20,6 +21,7 @@ ape console
 
 
 ape test --network ethereum:local
+ape test --network ethereum:local:test
 ape test -s -v
 ape test tests/test_NFTFlex.py -s
 
@@ -53,7 +55,10 @@ ape console
 #     print(f"Account: {account.address}, Balance: {account.balance / 1e18:.6f} ETH")
 
 
-ape run deploy --network ethereum:test
+# Deployment
+ape run deploy --network ethereum:local:test
+# Since Anvil is part of Foundry
+ape run deploy --network ethereum:local:foundry
 
 
 

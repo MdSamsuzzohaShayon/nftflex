@@ -10,12 +10,22 @@ dependencies:
 networks:
   ethereum:
     local:
-      default_provider: test  # ✅ Use Ape's built-in test provider
+      default_provider: anvil  # Set Anvil as the default provider for local testing
 
-# With test
-# Everything works but with test we are getting an error 
-# "Must be connected to a provider to use the token converter." happens because Ape Framework needs a provider for token conversions. This usually occurs when trying to interact with tokens (e.g., ERC-20) without a connected provider.
-test:
-  mnemonic: test test test test test test test test test test test junk
-  number_of_accounts: 5
-  balance: 100_000 ETH
+  test:
+    mnemonic: test test test test test test test test test test test junk
+    number_of_accounts: 5
+    balance: 100_000 ETH
+
+providers:
+  test:
+    fork: false  # No forking needed for built-in test provider
+    mnemonic: test test test test test test test test test test test junk
+    number_of_accounts: 5
+    balance: 100_000 ETH
+
+  anvil:
+    fork: false  # Disable forking unless needed
+    host: http://127.0.0.1
+    port: 8545
+
