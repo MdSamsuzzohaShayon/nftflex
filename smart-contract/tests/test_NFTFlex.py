@@ -17,6 +17,15 @@ collateral_amount = 10**18
 rental_id = 0  # Assuming first rental ID is 0
 duration = 2
 
+metadata_urls = [
+    "ipfs://QmQth5R8PWcM3GVrmeSrfmDrBXFk646x8Er4iU46zAD5Tm", # Bhawal Resort & Spa
+    "ipfs://QmZmPMzHxDKL4zmbBw6M4YhAuAkeUsFnvYV7uupuGoHte8", # The Royena Resort Ltd
+    "ipfs://QmbbLW4nkf3iGkEBPBUL8swMtWJ8PARNTFdJYAkMCDE9Ft", # Chuti Resort Gazipur
+    "ipfs://QmPn55rVcTsse3ZyVMG7vRVvTnRuvUZsxrAnCwFxXzqf4P", # CCULB Resort & Convention Hall
+    "ipfs://Qma9SwWr3JQoVny5E5yhkhu2iPjUDVNeNcBJT1AgE4z6Hn" # Third Terrace Resorts
+]
+
+
 """
 Setup for testing
 """
@@ -29,7 +38,7 @@ def owner():
 def user():
     """Returns a secondary test account (not the owner)."""
     new_user = accounts.test_accounts[1]  # Uses a different test account
-    # mock_erc20.mint(new_user, 10**20, sender=owner)
+    # mock_erc20.mint(new_user, metadata_urls[0], sender=owner)
     return new_user
 
 
@@ -68,7 +77,7 @@ def nft_address(nft_contract):
 @pytest.fixture 
 def minted_nft(nft_contract, owner):
     """Mints an NFT for the owner and returns the token ID."""
-    receipt = nft_contract.mint(owner, sender=owner)
+    receipt = nft_contract.mint(owner, metadata_urls[0], sender=owner)
 
     # Extract token ID from Transfer event
     event = list(receipt.events.filter(nft_contract.Transfer))[0]
@@ -89,7 +98,7 @@ def test_only_owner_can_create_rental(nft_flex_contract, nft_contract, nft_addre
     """
 
     # 🚀 STEP 1: Mint an NFT for the owner
-    receipt = nft_contract.mint(owner, sender=owner)
+    receipt = nft_contract.mint(owner, metadata_urls[0], sender=owner)
 
     # Extract token ID from the Transfer event
     event = list(receipt.events.filter(nft_contract.Transfer))[0]  # Get the first transfer event
@@ -224,7 +233,7 @@ def test_rent_nft_successfully(nft_flex_contract, nft_contract, nft_address, own
     """
 
     # 🚀 STEP 1: Owner mints an NFT
-    receipt = nft_contract.mint(owner, sender=owner)
+    receipt = nft_contract.mint(owner, metadata_urls[0], sender=owner)
 
     # Extract token ID from the Transfer event
     event = list(receipt.events.filter(nft_contract.Transfer))[0]

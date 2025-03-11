@@ -1,0 +1,330 @@
+[
+    {
+        "inputs": [],
+        "name": "NFTFlex__CollateralRefundFailed",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NFTFlex__CollateralTransferFailed",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NFTFlex__DurationMustBeGreaterThanZero",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NFTFlex__EarningTransferFailed",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NFTFlex__FailedTransferingETHToOwner",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NFTFlex__IncorrectPaymentAmount",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NFTFlex__NFTAlreadyRented",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NFTFlex__OnlyOwnerCanWithdrawEarnings",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NFTFlex__OnlyRenterCanEndRental",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NFTFlex__PriceMustBeGreaterThanZero",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NFTFlex__RentalDoesNotExist",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NFTFlex__RentalPeriodNotEnded",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NFTFlex__RentalStillActive",
+        "type": "error"
+    },
+    {
+        "inputs": [],
+        "name": "NFTFlex__SenderIsNotOwnerOfTheNFT",
+        "type": "error"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "rentalId",
+                "type": "uint256"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "address",
+                "name": "nftAddress",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "tokenId",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "pricePerHour",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "bool",
+                "name": "isFractional",
+                "type": "bool"
+            }
+        ],
+        "name": "NFTFlex__RentalCreated",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "rentalId",
+                "type": "uint256"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "renter",
+                "type": "address"
+            }
+        ],
+        "name": "NFTFlex__RentalEnded",
+        "type": "event"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "rentalId",
+                "type": "uint256"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "renter",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "startTime",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "endTime",
+                "type": "uint256"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "collateralAmount",
+                "type": "uint256"
+            }
+        ],
+        "name": "NFTFlex__RentalStarted",
+        "type": "event"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address",
+                "name": "_nftAddress",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_tokenId",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_pricePerHour",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bool",
+                "name": "_isFractional",
+                "type": "bool"
+            },
+            {
+                "internalType": "address",
+                "name": "_collateralToken",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_collateralAmount",
+                "type": "uint256"
+            }
+        ],
+        "name": "createRental",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "_rentalId",
+                "type": "uint256"
+            }
+        ],
+        "name": "endRental",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getRentalCounter",
+        "outputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "_rentalId",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "_duration",
+                "type": "uint256"
+            }
+        ],
+        "name": "rentNFT",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "",
+                "type": "uint256"
+            }
+        ],
+        "name": "s_rentals",
+        "outputs": [
+            {
+                "internalType": "address",
+                "name": "nftAddress",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "tokenId",
+                "type": "uint256"
+            },
+            {
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+            },
+            {
+                "internalType": "address",
+                "name": "renter",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "startTime",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "endTime",
+                "type": "uint256"
+            },
+            {
+                "internalType": "uint256",
+                "name": "pricePerHour",
+                "type": "uint256"
+            },
+            {
+                "internalType": "bool",
+                "name": "isFractional",
+                "type": "bool"
+            },
+            {
+                "internalType": "address",
+                "name": "collateralToken",
+                "type": "address"
+            },
+            {
+                "internalType": "uint256",
+                "name": "collateralAmount",
+                "type": "uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "uint256",
+                "name": "_rentalId",
+                "type": "uint256"
+            }
+        ],
+        "name": "withdrawEarnings",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+]

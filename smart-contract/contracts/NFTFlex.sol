@@ -54,6 +54,8 @@ contract NFTFlex {
     error NFTFlex__FailedTransferingETHToOwner();
     error NFTFlex__EarningTransferFailed();
 
+    string a_new_var = "10";
+
     /**
      * @dev Allows the owner of an NFT to list it for rental.
      * @param _nftAddress Address of the NFT contract (ERC721 or ERC1155).
@@ -186,19 +188,18 @@ contract NFTFlex {
         emit NFTFlex__RentalEnded(_rentalId, msg.sender);
     }
 
-
     /**
      * @dev Allows the owner to withdraw earnings from the rental.
      * @param _rentalId ID of the rental to withdraw earnings for.
      *
      * @dev Allows the owner of an NFT rental to withdraw earnings after the rental period has ended.
      * The earnings are calculated based on the rental duration and price per hour.
-     * 
+     *
      * Requirements:
      * - Only the owner of the NFT rental can withdraw earnings.
      * - The rental must have been completed (i.e., there must be a renter, and the rental period should have ended).
      * - Transfers earnings in either native ETH or ERC-20 tokens based on the collateral type.
-     * 
+     *
      * @param _rentalId ID of the rental for which earnings need to be withdrawn.
      */
     function withdrawEarnings(uint256 _rentalId) external {
@@ -226,7 +227,7 @@ contract NFTFlex {
         // Handle payment transfer logic based on the collateral type (ETH or ERC-20)
         if (rental.collateralToken == address(0)) {
             // Transfer earnings in ETH to the NFT owner
-            (bool success, ) = rental.owner.call{value: totalEarnings}("");
+            (bool success,) = rental.owner.call{value: totalEarnings}("");
             if (!success) {
                 revert NFTFlex__FailedTransferingETHToOwner();
             }
@@ -242,4 +243,9 @@ contract NFTFlex {
         rental.pricePerHour = 0;
     }
 
+    // Neet to test
+    // Add this function to your contract
+    function getRentalCounter() external view returns (uint256) {
+        return s_rentalCounter;
+    }
 }
