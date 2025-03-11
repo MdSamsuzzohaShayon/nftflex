@@ -1,85 +1,66 @@
-<script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
+  <header class="w-full bg-gray-900 text-white shadow-md">
+    <div class="container mx-auto flex items-center justify-between py-4 px-6">
+      <!-- Logo -->
+      <div class="flex items-center space-x-3">
+        <img alt="Vue logo" src="@/assets/logo.svg" class="w-12 h-12" />
+        <span class="text-2xl font-bold">NFT Rental</span>
+      </div>
 
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
+      <!-- Navigation -->
+      <nav class="hidden md:flex space-x-6 gap-x-3">
+        <RouterLink to="/" class="hover:text-green-400 transition">Home</RouterLink>
+        <RouterLink to="/about" class="hover:text-green-400 transition">About</RouterLink>
       </nav>
+
+      <!-- Wallet Connection -->
+      <button @click="connectWallet"
+        class="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-medium transition">
+        {{ isConnected ? `${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` : "Connect Wallet" }}
+      </button>
     </div>
   </header>
 
   <RouterView />
 </template>
 
+
+<script setup lang="ts">
+import { ref, onMounted } from "vue";
+import { ethers } from "ethers";
+import { RouterLink, RouterView } from "vue-router";
+
+const walletAddress = ref<string | null>(null);
+const isConnected = ref(false);
+
+const connectWallet = async () => {
+  if (window.ethereum) {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      walletAddress.value = await signer.getAddress();
+      isConnected.value = true;
+    } catch (error) {
+      console.error("Error connecting to MetaMask:", error);
+    }
+  } else {
+    alert("Please install MetaMask!");
+  }
+};
+
+onMounted(async () => {
+  /*
+  if (window.ethereum) {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const accounts = await provider.send("eth_accounts", []);
+    if (accounts.length > 0) {
+      walletAddress.value = accounts[0];
+      isConnected.value = true;
+    }
+  }
+    */
+});
+</script>
+
 <style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
-}
 </style>

@@ -7,10 +7,15 @@ dependencies:
     github: OpenZeppelin/openzeppelin-contracts
     version: v5.2.0  # OpenZeppelin contracts version
 
+compile:
+  contracts_folder: contracts
+  version: "0.8.24"  # Match your Solidity version
+
 networks:
   ethereum:
     local:
       default_provider: anvil  # Set Anvil as the default provider for local testing
+      chain_id: 31337
 
   test:
     mnemonic: test test test test test test test test test test test junk

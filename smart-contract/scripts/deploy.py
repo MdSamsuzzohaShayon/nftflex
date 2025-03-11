@@ -2,8 +2,10 @@
 # Docs: https://docs.apeworx.io/ape/latest/userguides/scripts.html
 # Scripts -> https://docs.apeworx.io/ape/stable/userguides/scripts.html
 import json
+import os
 from ape import accounts, project, networks
 from typing import Dict, List, Any
+
 
 
 
@@ -16,6 +18,10 @@ metadata_urls = [
 ]
 
 
+# Define the path to the parent directory and the file
+parent_dir = os.path.dirname(os.path.abspath(__file__))  # Get the current script's directory
+local_json_path = os.path.join(parent_dir, '..', '.build', '__local__.json')  # Path to the parent directory JSON file
+
 def save_abi(contract_name: str) -> None:
     """
     Save the ABI of a contract to a JSON file.
@@ -23,59 +29,61 @@ def save_abi(contract_name: str) -> None:
     Args:
         contract_name (str): The name of the contract to save the ABI for.
     """
+    # Attempt to get the contract from the project
     contract = getattr(project, contract_name, None)
     
+    # Check if the contract is found
     if not contract:
-        print(f"Contract {contract_name} not found!")
+        print(f"Contract '{contract_name}' not found in the project!")
         return
 
-    abi = contract.abi
-    serializable_abi = serialize_abi(abi)
-
-    # Write the ABI to a JSON file
-    with open(f"abis/{contract_name}.json", "w") as file:
-        json.dump(serializable_abi, file, indent=4)
-
-    print(f"{contract_name} ABI saved successfully!")
+    # Attempt to get the ABI from the contract
+    try:
+        abi = contract.abi  # Assuming the contract object has an 'abi' attribute
+    except AttributeError:
+        print(f"ABI for contract '{contract_name}' not found!")
+        return
 
 
-def serialize_abi(abi: List[Any]) -> List[Dict[str, Any]]:
-    """
-    Convert the ABI into a serializable format.
-    
-    Args:
-        abi (List[Any]): The contract ABI to serialize.
-    
-    Returns:
-        List[Dict[str, Any]]: A list of serialized ABI entries.
-    """
-    serializable_abi = []
-    
-    for entry in abi:
-        abi_entry = {}
 
-        if hasattr(entry, 'name'):  # Function or event
-            abi_entry["name"] = entry.name
-        if hasattr(entry, 'type'):  # Common attribute for function/event
-            abi_entry["type"] = entry.type
-        if hasattr(entry, 'inputs'):  # Inputs of function/event
-            abi_entry["inputs"] = [{"name": inp.name, "type": inp.type} for inp in entry.inputs]
-        if hasattr(entry, 'outputs'):  # Outputs of function/event
-            abi_entry["outputs"] = [{"name": out.name, "type": out.type} for out in entry.outputs]
-        if hasattr(entry, 'stateMutability'):  # State mutability for functions
-            abi_entry["stateMutability"] = entry.stateMutability
-        if hasattr(entry, 'payable'):  # Payable functions
-            abi_entry["payable"] = entry.payable
-        if hasattr(entry, 'constant'):  # Constant functions
-            abi_entry["constant"] = entry.constant
+    # Check if the file exists before proceeding
+    if not os.path.exists(local_json_path):
+        print(f"The file '{local_json_path}' does not exist!")
+        return
 
-        # Handle constructor separately
-        if entry.type == "constructor":
-            abi_entry["type"] = "constructor"
+    # Load the JSON data from the file
+    try:
+        with open(local_json_path, 'r') as f:
+            local_json = json.load(f)
+    except json.JSONDecodeError:
+        print(f"Error decoding JSON from the file '{local_json_path}'!")
+        return
+    except Exception as e:
+        print(f"An unexpected error occurred while reading the file: {e}")
+        return
 
-        serializable_abi.append(abi_entry)
+    # Check if the contract name exists in the loaded JSON
+    if contract_name not in local_json['contractTypes']:
+        print(f"Contract name '{contract_name}' not found in the JSON file!")
+        return
 
-    return serializable_abi
+    # Extract the ABI for the contract from the JSON
+    try:
+        contract_abi = local_json['contractTypes'][contract_name]['abi']
+    except KeyError:
+        print(f"ABI not found for contract '{contract_name}' in the JSON data!")
+        return
+
+    # Write the ABI to a new JSON file
+    try:
+        with open(f'abis/{contract_name}_ABI.json', 'w') as contract_file:
+            json.dump(contract_abi, contract_file, indent=4)
+        print(f"ABI for contract '{contract_name}' saved successfully!")
+    except IOError:
+        print(f"Error writing the ABI to the file '{contract_name}_ABI.json'!")
+    except Exception as e:
+        print(f"An unexpected error occurred while writing the ABI: {e}")
+
 
 
 def deploy_contracts(account) -> Dict[str, str]:
@@ -102,7 +110,7 @@ def deploy_contracts(account) -> Dict[str, str]:
     }
 
 
-def list_nfts_for_rental(account, simple_nft, nft_flex, token_id: int) -> None:
+def list_nfts_for_rental(account, simple_nft, nft_flex, token_id: int, metadata_url: str) -> None:
     """
     List the minted NFT for rental on NFTFlex contract.
     
@@ -122,7 +130,7 @@ def list_nfts_for_rental(account, simple_nft, nft_flex, token_id: int) -> None:
         int(2e18),  # Collateral amount (2 ETH)
         sender=account
     )
-    print("NFT listed for rental!")
+    print(f"Created rental for token ID {token_id} with metadata {metadata_url}")
 
 
 def mint_nft(account, simple_nft, metadata_url: str) -> int:
@@ -165,6 +173,34 @@ def save_contract_data(active_network, contract_addresses) -> None:
 
     print("Contract addresses saved to contract_addresses.json")
 
+def list_accounts():
+    # List all account aliases
+    print("Available Accounts:")
+    for account in accounts:
+        print(f"- {account.alias}")
+
+    # Print details for each account
+    print("\nAccount Details:")
+    for account in accounts:
+        print(f"\nAccount Alias: {account.alias}")
+        print(f"Address: {account.address}")
+        
+        # Access private key (only for test accounts)
+        if hasattr(account, 'private_key'):
+            print(f"Private Key: {account.private_key}")
+        else:
+            print("Private Key: <hidden for live accounts>")
+
+    # Print network details
+    active_provider = networks.active_provider
+    if active_provider:
+        print("\nNetwork Details:")
+        print(f"Network Name: {active_provider.network.name}")
+        print(f"Chain ID: {active_provider.chain_id}")
+        print(f"RPC URL: {active_provider.uri}")
+    else:
+        print("\nNo active network provider.")
+
 
 def main():
     # Determine the network and select the appropriate provider
@@ -187,13 +223,15 @@ def main():
     # Iterate over metadata_urls to mint NFTs
     for metadata_url in metadata_urls:
         token_id = mint_nft(account, simple_nft, metadata_url)
-        list_nfts_for_rental(account, simple_nft, nft_flex, token_id) # Renting price and collateral
+        list_nfts_for_rental(account, simple_nft, nft_flex, token_id, metadata_url) # Renting price and collateral
 
 
     # Save contract data and ABI files
     save_contract_data(active_network, contract_addresses)
     save_abi("SimpleNFT")
     save_abi("NFTFlex")
+
+    list_accounts()
 
 
 if __name__ == "__main__":

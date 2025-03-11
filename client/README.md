@@ -32,8 +32,9 @@ npm run dev
 npm run build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
 
-```sh
-npm run lint
-```
+This is my metamask network setting
+Network name: Anvil
+RPC: 127.0.0:8584
+Chain ID: 31337
+Currency Symbol: ETH
