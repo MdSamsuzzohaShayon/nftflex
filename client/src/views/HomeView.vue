@@ -4,62 +4,15 @@
       <h1 class="text-3xl font-bold text-gray-900 mb-8">NFT Rental Marketplace</h1>
 
       <!-- Create Rental Section -->
-      <div class="bg-white shadow rounded-lg p-6 mb-8">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">Create a New Rental</h2>
-        <form @submit.prevent="createRental">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label for="nftAddress" class="block text-sm font-medium text-gray-700">NFT Address</label>
-              <input v-model="newRental.nftAddress" type="text" id="nftAddress"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
-            </div>
-            <div>
-              <label for="tokenId" class="block text-sm font-medium text-gray-700">Token ID</label>
-              <input v-model="newRental.tokenId" type="number" id="tokenId"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
-            </div>
-            <div>
-              <label for="pricePerHour" class="block text-sm font-medium text-gray-700">Price Per Hour (wei)</label>
-              <input v-model="newRental.pricePerHour" type="number" id="pricePerHour"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
-            </div>
-            <div>
-              <label for="collateralToken" class="block text-sm font-medium text-gray-700">Collateral Token Address (0x0
-                for ETH)</label>
-              <input v-model="newRental.collateralToken" type="text" id="collateralToken"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
-            </div>
-            <div>
-              <label for="collateralAmount" class="block text-sm font-medium text-gray-700">Collateral Amount
-                (wei)</label>
-              <input v-model="newRental.collateralAmount" type="number" id="collateralAmount"
-                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" required />
-            </div>
-            <div class="flex items-center">
-              <input v-model="newRental.isFractional" type="checkbox" id="isFractional"
-                class="h-4 w-4 text-indigo-600 border-gray-300 rounded" />
-              <label for="isFractional" class="ml-2 block text-sm text-gray-900">Allow Fractional Renting</label>
-            </div>
-          </div>
-          <button type="submit"
-            class="mt-6 w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Create Rental</button>
-        </form>
-      </div>
+      <CreateRentalForm @create-rental="createRental" />
 
       <!-- Rentals List Section -->
       <div class="bg-white shadow rounded-lg p-6">
         <h2 class="text-xl font-semibold text-gray-800 mb-4">Available Rentals</h2>
         <div v-if="rentals.length === 0" class="text-gray-500">No rentals available.</div>
         <div v-else class="space-y-4">
-          <div v-for="rental in rentals" :key="rental.id" class="border border-gray-200 rounded-lg p-4">
-            <h3 class="text-lg font-medium text-gray-900">Rental ID: {{ rental.id }}</h3>
-            <p class="text-sm text-gray-500">NFT Address: {{ rental.nftAddress }}</p>
-            <p class="text-sm text-gray-500">Token ID: {{ rental.tokenId }}</p>
-            <p class="text-sm text-gray-500">Price Per Hour: {{ rental.pricePerHour }} wei</p>
-            <p class="text-sm text-gray-500">Collateral: {{ rental.collateralAmount }} wei</p>
-            <button @click="rentNFT(rental.id)"
-              class="mt-2 bg-green-600 text-white py-1 px-3 rounded-md hover:bg-green-700">Rent NFT</button>
-          </div>
+          <RentalCard v-for="rental in rentals" :key="rental.id" :rental="rental" @rent-nft="rentNFT"
+            :userAddress="userAddress" @end-rental="endRental" @withdraw-earnings="withdrawEarnings" />
         </div>
       </div>
     </div>
@@ -69,22 +22,24 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted } from 'vue';
 import { ethers } from 'ethers';
+import type { INFTMetadata, INFTRental } from '@/types';
+import RentalCard from '@/components/RentalCard.vue';
+import CreateRentalForm from '@/components/CreateRentalForm.vue';
 import NFTFlexABI from '../abis/NFTFlex.json'; // Import your contract ABI
+import SimpleNFTABI from '../abis/SimpleNFT.json'; // Import your contract ABI
 import contracts from "../contract_addresses.json";
+import { httpGateway } from '@/utils/helper';
 
-const rentals = ref<Rental[]>([]);
-let provider: ethers.BrowserProvider | null = null;
+// Global variables
 let signer: ethers.Signer | null = null;
 let nftFlexContract: ethers.Contract | null = null;
+let simpleNFTContract: ethers.Contract | null = null;
 
-// Define the types
-interface Rental {
-  id: number;
-  nftAddress: string;
-  tokenId: string;
-  pricePerHour: string;
-  collateralAmount: string;
-}
+// Reactive State
+const rentals = ref<INFTRental[]>([]);
+let provider: ethers.BrowserProvider | null = null;
+const userAddress = ref<string | null>(null);
+
 
 const newRental = reactive({
   nftAddress: '',
@@ -94,6 +49,9 @@ const newRental = reactive({
   collateralToken: '',
   collateralAmount: 0,
 });
+
+
+
 
 async function checkNetwork(provider: ethers.BrowserProvider | null) {
   if (!provider) return;
@@ -144,6 +102,44 @@ async function checkMetamaskConnection(provider: ethers.BrowserProvider | null) 
   }
 }
 
+async function fetchNFTMetadata(tokenId: number): Promise<INFTMetadata | null> {
+  try {
+    if (!simpleNFTContract) {
+      console.log("SimpleNFT contract not found");
+      return null;
+    }
+
+    // Check if the token exists
+    try {
+      const owner = await simpleNFTContract.ownerOf(tokenId);
+      console.log(`Token ${tokenId} exists and is owned by: ${owner}`);
+    } catch (error) {
+      console.error(`Token ${tokenId} does not exist:`, error);
+      return null;
+    }
+
+    // Fetch the token URI
+    let uri = await simpleNFTContract.tokenURI(tokenId);
+
+    // Convert IPFS URL to HTTP if necessary
+    const httpUrl = httpGateway(uri);
+
+    const response = await fetch(httpUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch metadata: ${response.statusText}`);
+    }
+
+    const metadata = await response.json();
+    console.log({ metadata });
+
+    return metadata;
+  } catch (error) {
+    console.error("Failed to fetch NFT metadata:", error);
+    return null;
+  }
+}
+
+
 
 async function loadRentals() {
   console.log("Initializing contract check...");
@@ -176,7 +172,7 @@ async function loadRentals() {
       return;
     }
 
-    let rentalList: any[] = [];
+    let rentalList: INFTRental[] = [];
     for (let i = 0; i < rentalCount; i++) {
       try {
         console.log(`Fetching rental #${i}...`);
@@ -184,13 +180,16 @@ async function loadRentals() {
         console.log(`Rental ${i}:`, rental);
 
         if (rental) {
-          rentalList.push({
+          const nftDetail = await fetchNFTMetadata(rental.tokenId.toString());
+          const rentalObj = {
             id: i,
             nftAddress: rental.nftAddress,
             tokenId: rental.tokenId.toString(),
             pricePerHour: rental.pricePerHour.toString(),
             collateralAmount: rental.collateralAmount.toString(),
-          });
+            metadata: nftDetail
+          };
+          rentalList.push(rentalObj);
         }
       } catch (err) {
         console.error(`Error fetching rental ${i}:`, err);
@@ -224,6 +223,10 @@ onMounted(async () => {
     await checkNetwork(provider);
 
     signer = await provider.getSigner();
+    const ua = await signer.getAddress();
+    if (ua) {
+      userAddress.value = ua;
+    }
 
     // Check if the contract address is valid
     if (!ethers.isAddress(contracts.NFTFlex)) {
@@ -233,8 +236,10 @@ onMounted(async () => {
     }
 
     nftFlexContract = new ethers.Contract(contracts.NFTFlex, NFTFlexABI, signer);
+    simpleNFTContract = new ethers.Contract(contracts.SimpleNFT, SimpleNFTABI, signer);
 
-    console.log("Contract initialized:", nftFlexContract);
+    console.log("NFTFlex Contract initialized:", nftFlexContract);
+    console.log("SimpleNFT Contract initialized:", simpleNFTContract);
     await loadRentals();
   } catch (error) {
     console.error("Error initializing contract:", error);
@@ -264,31 +269,97 @@ const createRental = async () => {
 
 const rentNFT = async (rentalId: number) => {
   try {
-    const duration = prompt('Enter rental duration (in hours):');
-    if (!duration) return;
+    // const duration = prompt('Enter rental duration (in hours):');
+    const duration = 2;
+    if (!duration) {
+      alert("Must put a valid duration");
+      return;
+    };
+
+    // const durationNum = parseInt(duration, 10);
 
     const rental = rentals.value.find(r => r.id === rentalId);
-    if (rental) {
-      // Convert pricePerHour and collateralAmount to numbers
-      const pricePerHour = Number(rental.pricePerHour);
-      const collateralAmount = Number(rental.collateralAmount);
 
-      // Ensure that the duration is a number
-      const rentalDuration = Number(duration);
-
-      // Calculate totalPrice and use a BigInt for precision if necessary
-      const totalPrice = pricePerHour * rentalDuration;
-
-      const tx = await nftFlexContract?.rentNFT(rentalId, rentalDuration, { value: totalPrice + collateralAmount });
-      await tx?.wait();
-      alert('NFT rented successfully!');
-      await loadRentals();
+    if (!rental) {
+      alert("Rental not found.");
+      return;
     }
-  } catch (error) {
+
+    // Convert pricePerHour and collateralAmount to BigInt
+    const pricePerHour = BigInt(rental.pricePerHour);
+    const collateralAmount = BigInt(rental.collateralAmount);
+
+    // Ensure that the duration is a number
+    const rentalDuration = Number(duration);
+    if (isNaN(rentalDuration) || rentalDuration <= 0) {
+      alert("Please enter a valid duration (must be a positive number).");
+      return;
+    }
+
+    // Calculate totalPrice and use a BigInt for precision
+    const totalPrice = pricePerHour * BigInt(rentalDuration);
+    const totalPayment = totalPrice + collateralAmount;
+
+    console.log("Rental Duration:", rentalDuration);
+    console.log("Price Per Hour:", pricePerHour.toString());
+    console.log("Collateral Amount:", collateralAmount.toString());
+    console.log("Total Payment:", totalPayment.toString());
+
+
+    // Send the transaction
+    const tx = await nftFlexContract?.rentNFT(rentalId, rentalDuration, { value: totalPayment.toString() });
+    const receipt = await tx?.wait();
+    
+    await loadRentals();
+  } catch (error: any) {
     console.error('Error renting NFT:', error);
-    alert('Failed to rent NFT.');
+    // Decode the custom error
+    if (error.data) {
+      try {
+        const decodedError = nftFlexContract?.interface.parseError(error.data);
+        if (decodedError) {
+          alert(`Transaction Failed: ${decodedError.name}`);
+          return;
+        }
+      } catch (decodeError) {
+        console.error('Error decoding custom error:', decodeError);
+      }
+    }
+
+    // Fallback to generic error message
+    if (error.reason) {
+      alert(`Transaction Failed: ${error.reason}`);
+    } else {
+      alert(`Transaction Reverted: ${error.message}`);
+    }
   }
 };
+
+
+const endRental = async (rentalId: number) => {
+  try {
+    const tx = await nftFlexContract?.endRental(rentalId);
+    await tx?.wait();
+    alert('Rental ended successfully!');
+    await loadRentals();
+  } catch (error) {
+    console.error('Error ending rental:', error);
+    alert('Failed to end rental. Check the console for details.');
+  }
+};
+
+const withdrawEarnings = async (rentalId: number) => {
+  try {
+    const tx = await nftFlexContract?.withdrawEarnings(rentalId);
+    await tx?.wait();
+    alert('Earnings withdrawn successfully!');
+    await loadRentals();
+  } catch (error) {
+    console.error('Error withdrawing earnings:', error);
+    alert('Failed to withdraw earnings. Check the console for details.');
+  }
+};
+
 
 
 

@@ -16,7 +16,7 @@
       <!-- Wallet Connection -->
       <button @click="connectWallet"
         class="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-medium transition">
-        {{ isConnected ? `${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` : "Connect Wallet" }}
+        {{ (isConnected && walletAddress) ? `${truncateAddress(walletAddress)}` : "Connect Wallet" }}
       </button>
     </div>
   </header>
@@ -29,6 +29,7 @@
 import { ref, onMounted } from "vue";
 import { ethers } from "ethers";
 import { RouterLink, RouterView } from "vue-router";
+import { truncateAddress } from "./utils/helper";
 
 const walletAddress = ref<string | null>(null);
 const isConnected = ref(false);
