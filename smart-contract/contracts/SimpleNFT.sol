@@ -63,4 +63,10 @@ contract SimpleNFT is ERC721 {
     function tokenMetadataUrl(uint256 tokenId) external view returns (string memory) {
         return _tokenMetadataUrls[tokenId];
     }
+
+     // ✅ Corrected: Explicitly mark _exists as external in the ERC721 contract
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+    ownerOf(tokenId); // This will revert if the token does not exist
+    return _tokenMetadataUrls[tokenId];
+}
 }

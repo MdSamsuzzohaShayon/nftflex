@@ -208,7 +208,7 @@ def main():
     print(f"Deploying on {active_network} network...")
 
     # Load an account to deploy the contracts
-    account = accounts.test_accounts[0]
+    account = accounts.test_accounts[-1]
 
     # Deploy the contracts
     contract_addresses = deploy_contracts(account)

@@ -156,3 +156,73 @@ For any inquiries or feedback, please reach out at [mdsamsuzzoha5222@gmail.com](
 - OpenZeppelin for smart contract templates.
 - Chainlink for real-time price feeds.
 - The ape community for support and resources.
+
+
+---
+---
+---
+---
+---
+---
+
+### **Understanding the Cycle of Your Smart Contract (`NFTFlex`)**
+Your `NFTFlex` contract allows NFT owners to list their NFTs for rent, enabling renters to borrow them for a specified time. Here’s how the cycle works:
+
+1. **Creating a Rental (By NFT Owner - Account 1)**
+   - The owner of an NFT calls `createRental()` to list their NFT for rent.
+   - They specify the NFT contract address, token ID, price per hour, whether the rental is fractional, collateral token address, and collateral amount.
+   - This creates a rental entry in `s_rentals` and emits an event `NFTFlex__RentalCreated`.
+
+2. **Renting an NFT (By Renter - Account 2)**
+   - A user who wants to rent the NFT calls `rentNFT()` with the `rentalId` and `duration` (in hours).
+   - They must send enough ETH (or ERC20 tokens) to cover both the rental fee and collateral.
+   - If successful:
+     - The `renter` field is updated to the caller’s address.
+     - The rental start and end times are set.
+     - The event `NFTFlex__RentalStarted` is emitted.
+   - If anything is wrong (e.g., incorrect payment, already rented NFT, etc.), the function **reverts with an error**, which we can capture in the frontend.
+
+3. **Ending the Rental (By Renter - Account 2)**
+   - When the rental period is over, the renter calls `endRental()`.
+   - The function checks:
+     - The caller is the correct renter.
+     - The rental period has ended.
+   - If successful:
+     - The renter’s collateral is refunded.
+     - The rental is marked as available.
+     - The event `NFTFlex__RentalEnded` is emitted.
+
+4. **Withdrawing Earnings (By NFT Owner - Account 1)**
+   - After a rental ends, the owner can call `withdrawEarnings()`.
+   - The function checks:
+     - The caller is the owner.
+     - The rental has ended.
+   - The contract transfers the rental fee (excluding collateral) to the owner.
+   - The event `NFTFlex__EarningTransferFailed` is emitted if it fails.
+
+### **Summary**
+- **Account 1 (NFT Owner)**: Calls `createRental()` to list an NFT, later calls `withdrawEarnings()` to collect rent.
+- **Account 2 (Renter)**: Calls `rentNFT()` to borrow an NFT, later calls `endRental()` to return it.
+- **Account 3 (Another User)**: Can rent NFTs, interact with events, and observe state changes.
+
+### **Frontend Features**
+- **Error Handling**: Catches errors and displays them in Vue.js.
+- **Event Listeners**: Listens for contract events to update UI in real-time.
+- **Metamask Integration**: Allows users to interact with the contract via Metamask.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

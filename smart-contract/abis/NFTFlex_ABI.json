@@ -46,6 +46,11 @@
     },
     {
         "inputs": [],
+        "name": "NFTFlex__OwnerNeedToWithdrawEarnings",
+        "type": "error"
+    },
+    {
+        "inputs": [],
         "name": "NFTFlex__PriceMustBeGreaterThanZero",
         "type": "error"
     },
@@ -68,6 +73,31 @@
         "inputs": [],
         "name": "NFTFlex__SenderIsNotOwnerOfTheNFT",
         "type": "error"
+    },
+    {
+        "anonymous": false,
+        "inputs": [
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "rentalId",
+                "type": "uint256"
+            },
+            {
+                "indexed": true,
+                "internalType": "address",
+                "name": "owner",
+                "type": "address"
+            },
+            {
+                "indexed": false,
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+            }
+        ],
+        "name": "NFTFlex__EarningsWithdrawn",
+        "type": "event"
     },
     {
         "anonymous": false,
@@ -309,6 +339,11 @@
                 "internalType": "uint256",
                 "name": "collateralAmount",
                 "type": "uint256"
+            },
+            {
+                "internalType": "bool",
+                "name": "pendingWithdrawal",
+                "type": "bool"
             }
         ],
         "stateMutability": "view",
