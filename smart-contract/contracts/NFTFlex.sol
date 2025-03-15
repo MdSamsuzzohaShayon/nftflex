@@ -18,6 +18,7 @@ contract NFTFlex {
         bool isFractional;
         address collateralToken;
         uint256 collateralAmount;
+        bool pendingWithdrawal;
     }
 
     // Variables
@@ -37,6 +38,7 @@ contract NFTFlex {
         uint256 rentalId, address indexed renter, uint256 startTime, uint256 endTime, uint256 collateralAmount
     );
     event NFTFlex__RentalEnded(uint256 rentalId, address indexed renter);
+    event NFTFlex__EarningsWithdrawn(uint256 rentalId, address indexed owner, uint256 amount);
 
     // Errors
     error NFTFlex__PriceMustBeGreaterThanZero();
@@ -53,6 +55,7 @@ contract NFTFlex {
     error NFTFlex__RentalStillActive();
     error NFTFlex__FailedTransferingETHToOwner();
     error NFTFlex__EarningTransferFailed();
+    error NFTFlex__OwnerNeedToWithdrawEarnings();
 
     string a_new_var = "10";
 
@@ -92,7 +95,8 @@ contract NFTFlex {
             pricePerHour: _pricePerHour,
             isFractional: _isFractional,
             collateralToken: _collateralToken,
-            collateralAmount: _collateralAmount
+            collateralAmount: _collateralAmount,
+            pendingWithdrawal: false
         });
 
         emit NFTFlex__RentalCreated(s_rentalCounter, msg.sender, _nftAddress, _tokenId, _pricePerHour, _isFractional);
@@ -142,7 +146,8 @@ contract NFTFlex {
         // Assign renter and start rental
         rental.renter = msg.sender;
         rental.startTime = block.timestamp;
-        rental.endTime = block.timestamp + (_duration * 1 hours);
+        rental.endTime = block.timestamp + (_duration * 1 hours); // Permanent hours
+        rental.pendingWithdrawal = true;
 
         emit NFTFlex__RentalStarted(_rentalId, msg.sender, rental.startTime, rental.endTime, collateral);
     }
@@ -162,6 +167,11 @@ contract NFTFlex {
         if (block.timestamp < rental.endTime) {
             // ✅ Fix rental period check
             revert NFTFlex__RentalPeriodNotEnded();
+        }
+
+        if (rental.pendingWithdrawal) {
+            // ✅ Fix pending withdrawal check
+            revert NFTFlex__OwnerNeedToWithdrawEarnings();
         }
 
         // Reset rental state
@@ -217,7 +227,7 @@ contract NFTFlex {
         }
 
         // Calculate total earnings: price per hour * number of hours rented
-        uint256 totalEarnings = rental.pricePerHour * ((rental.endTime - rental.startTime) / 1 hours);
+        uint256 totalEarnings = rental.pricePerHour * ((rental.endTime - rental.startTime) / 1 hours); // Permanent hours
 
         // Ensure there are earnings to withdraw
         if (totalEarnings == 0) {
@@ -239,8 +249,11 @@ contract NFTFlex {
             }
         }
 
-        // Reset rental earnings (optional: if we want to keep track of withdrawn earnings separately)
+        // Reset rental earnings and pendingWithdrawal flag
         rental.pricePerHour = 0;
+        rental.pendingWithdrawal = false; // Reset the flag
+
+        emit NFTFlex__EarningsWithdrawn(_rentalId, msg.sender, totalEarnings);
     }
 
     // Neet to test

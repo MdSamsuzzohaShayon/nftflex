@@ -1,4 +1,4 @@
-export interface INFTMetadata{
+export interface INFTMetadata {
     attributes: Record<string, string | number>[];
     description: string;
     external_url: string;
@@ -6,11 +6,24 @@ export interface INFTMetadata{
     name: string;
 }
 
-export interface INFTRental{
-    id: number;
+
+export interface INFTRental {
+    id: number; // Extra
+
     nftAddress: string;
     tokenId: string;
+    owner: string;
+
+    renter: string;
+    startTime: number;
+    endTime: number;
+
     pricePerHour: string;
+    isFractional: boolean;
+    collateralToken: string;
     collateralAmount: string;
-    metadata: INFTMetadata | null;
+
+    pendingWithdrawal: boolean;
+
+    metadata: INFTMetadata | null; // Extra
 }

@@ -356,8 +356,12 @@ def test_renter_can_end_rental_after_expiry(nft_flex_contract, owner, user, mint
     new_time = rental_end_time + 1  # Move time forward by 1 second after the rental end time
     chain.mine(timestamp=new_time)  # Mine a block with updated timestamp
 
+    
+    tx = nft_flex_contract.withdrawEarnings(rental_id, sender=owner)
+
     # End rental
     tx = nft_flex_contract.endRental(rental_id, sender=user)
+    
 
     # Check events
     event = list(tx.events.filter(nft_flex_contract.NFTFlex__RentalEnded))[0]
@@ -470,7 +474,7 @@ def test_cannot_withdraw_zero_earnings(nft_flex_contract, minted_nft, nft_addres
     assert isinstance(exc_info.value, nft_flex_contract.NFTFlex__EarningTransferFailed)
 
 
-
+# NFTFlex__EarningsWithdrawn
 
 # 🚀 STEP 8: Test successful ETH withdrawal
 def test_successful_eth_withdrawal(nft_flex_contract, nft_contract, nft_address, owner, user, minted_nft):
@@ -506,10 +510,19 @@ def test_successful_eth_withdrawal(nft_flex_contract, nft_contract, nft_address,
     # Step 4: Owner withdraws earnings
     initial_balance = owner.balance
     tx = nft_flex_contract.withdrawEarnings(rental_id, sender=owner)
+    # receipt = 
     
     # Step 5: Validate balance change
     expected_earnings = price_per_hour * duration
     gas_cost = tx.gas_used * tx.gas_price  # Calculate gas cost
+
+    # Verify the event NFTFlex__EarningsWithdrawn was emitted
+    event = tx.events.filter(nft_flex_contract.NFTFlex__EarningsWithdrawn)[0]
+
+    assert event.rentalId == rental_id 
+    assert event.owner == owner
+    assert event.amount == expected_earnings
+
 
     print(f"Initial balance: {initial_balance}")
     print(f"Expected earnings: {expected_earnings}")
@@ -520,7 +533,6 @@ def test_successful_eth_withdrawal(nft_flex_contract, nft_contract, nft_address,
 
 
 
-# 🚀 STEP 5: Test successful ERC-20 withdrawal
 # 🚀 STEP 5: Test successful ERC-20 withdrawal
 def test_successful_erc20_withdrawal(nft_flex_contract, nft_contract, nft_address, owner, funded_user, minted_nft, mock_erc20):
     """
@@ -562,8 +574,16 @@ def test_successful_erc20_withdrawal(nft_flex_contract, nft_contract, nft_addres
     initial_balance = mock_erc20.balanceOf(owner)
 
     # Step 6: Owner withdraws earnings
-    nft_flex_contract.withdrawEarnings(rental_id, sender=owner)
+    tx = nft_flex_contract.withdrawEarnings(rental_id, sender=owner)
 
     # Step 7: Validate ERC-20 balance increase
     expected_earnings = price_per_hour * duration
+
+    # Verify the event NFTFlex__EarningsWithdrawn was emitted
+    event = tx.events.filter(nft_flex_contract.NFTFlex__EarningsWithdrawn)[0]
+
+    assert event.rentalId == rental_id 
+    assert event.owner == owner
+    assert event.amount == expected_earnings
+
     assert mock_erc20.balanceOf(owner) == initial_balance + expected_earnings

@@ -5,16 +5,16 @@
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-semibold text-gray-900">Rental ID: {{ rental.id }}</h3>
       <div class="flex space-x-2">
-        <button v-if="!rental.renter" @click="emitRentNFT"
+        <button v-if="!isValidRenter(rental.renter) && rental.owner !== userAddress" @click="emitRentNFT"
           class="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-medium transition">
           Rent NFT
         </button>
-        <button v-if="rental.renter && rental.renter === userAddress" @click="emitEndRental"
+        <button v-if="rental.renter && rental.renter === userAddress && !rental.pendingWithdrawal" @click="emitEndRental"
           class="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition">
           End Rental
         </button>
         <button
-          v-if="rental.owner === userAddress && rental.renter && rental.endTime > 0 && rental.endTime < currentTime"
+          v-if="rental?.owner === userAddress && rental.renter && rental?.endTime > 0 && rental?.endTime < currentTime && rental.pendingWithdrawal"
           @click="emitWithdrawEarnings"
           class="px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition">
           Withdraw Earnings
@@ -54,19 +54,40 @@
 
 <script setup lang="ts">
 import { defineProps, defineEmits } from 'vue';
-import { convertWeiToEth, copyToClipboard, httpGateway, truncateAddress } from '@/utils/helper';
+import { convertWeiToEth, copyToClipboard, httpGateway, isValidRenter, truncateAddress } from '@/utils/helper';
+import type { INFTRental } from '@/types';
 
 const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
 
-const props = defineProps(["rental", "userAddress"]);
+// 🔹 Define Props
+const props = defineProps<{
+  rental: INFTRental;
+  userAddress: string | null;
+}>();
 
 // Emit a button
-const emit = defineEmits(['rent-nft', 'end-rental', 'withdraw-earnings']);
+// 🔹 Define Emits
+const emit = defineEmits<{
+  (event: 'rent-nft', rentalId: number): void;
+  (event: 'end-rental', rentalId: number): void;
+  (event: 'withdraw-earnings', rentalId: number): void;
+}>();
+
+// console.log("Rental: ", props.rental);
+
 
 
 // Debug logs
-console.log("User Address:", props.userAddress);
-console.log("Renter Address:", props.rental);
+// console.log("httpGateway", props.userAddress);
+// console.log("Renter Address:", props.rental);
+
+// rental.owner === userAddress && rental.renter && rental.endTime > 0 && rental.endTime < currentTime
+// console.log(`User Address: ${props.userAddress}`);
+// console.log(`Rental Owner: ${props.rental.owner}`);
+// console.log(`Rental Renter: ${props.rental.renter}`);
+// console.log(`Rental End Time: ${props.rental.endTime}`);
+// console.log(`Current Time: ${currentTime}`);  
+
 
 
 const emitRentNFT = () => {

@@ -28,7 +28,7 @@ import CreateRentalForm from '@/components/CreateRentalForm.vue';
 import NFTFlexABI from '../abis/NFTFlex.json'; // Import your contract ABI
 import SimpleNFTABI from '../abis/SimpleNFT.json'; // Import your contract ABI
 import contracts from "../contract_addresses.json";
-import { httpGateway } from '@/utils/helper';
+import { handleTransactionError, httpGateway, verifyEvent } from '@/utils/helper';
 
 // Global variables
 let signer: ethers.Signer | null = null;
@@ -61,7 +61,7 @@ async function checkNetwork(provider: ethers.BrowserProvider | null) {
   const expectedChainId = BigInt(expectedChainIdNumber); // Convert to bigint for comparison
   // Change this to your network's chain ID
 
-  window.ethereum.request({ method: 'eth_chainId' }).then(console.log)
+  window.ethereum.request({ method: 'eth_chainId' }).then(console.log);
 
 
   if (network.chainId !== expectedChainId) {
@@ -112,7 +112,7 @@ async function fetchNFTMetadata(tokenId: number): Promise<INFTMetadata | null> {
     // Check if the token exists
     try {
       const owner = await simpleNFTContract.ownerOf(tokenId);
-      console.log(`Token ${tokenId} exists and is owned by: ${owner}`);
+      // console.log(`Token ${tokenId} exists and is owned by: ${owner}`);
     } catch (error) {
       console.error(`Token ${tokenId} does not exist:`, error);
       return null;
@@ -130,7 +130,8 @@ async function fetchNFTMetadata(tokenId: number): Promise<INFTMetadata | null> {
     }
 
     const metadata = await response.json();
-    console.log({ metadata });
+    // console.log("NFT Metadata:", metadata);
+
 
     return metadata;
   } catch (error) {
@@ -142,17 +143,17 @@ async function fetchNFTMetadata(tokenId: number): Promise<INFTMetadata | null> {
 
 
 async function loadRentals() {
-  console.log("Initializing contract check...");
+  // console.log("Initializing contract check...");
   if (!nftFlexContract) {
     console.error("Contract instance is null! Check deployment & address.");
     return;
   }
 
-  console.log("Contract Address:", contracts.NFTFlex);
-  console.log("Checking contract initialization:", nftFlexContract);
+  // console.log("Contract Address:", contracts.NFTFlex);
+  // console.log("Checking contract initialization:", nftFlexContract);
 
   try {
-    console.log("Calling getRentalCounter...");
+    // console.log("Calling getRentalCounter...");
 
     // **⏳ Detect if it hangs**
     const timeoutPromise = new Promise((_, reject) =>
@@ -175,20 +176,38 @@ async function loadRentals() {
     let rentalList: INFTRental[] = [];
     for (let i = 0; i < rentalCount; i++) {
       try {
-        console.log(`Fetching rental #${i}...`);
+        // console.log(`Fetching rental #${i}...`);
         const rental = await nftFlexContract?.s_rentals(i);
-        console.log(`Rental ${i}:`, rental);
+        // console.log(`Rental ${i}:`, rental);
 
         if (rental) {
           const nftDetail = await fetchNFTMetadata(rental.tokenId.toString());
-          const rentalObj = {
+
+          // console.log(`Starting Time: ${rental.startTime}`);
+          // console.log(`End Time: ${rental.endTime}`);
+
+
+          const rentalObj: INFTRental = {
             id: i,
-            nftAddress: rental.nftAddress,
+
+            nftAddress: rental.nftAddress.toString(),
             tokenId: rental.tokenId.toString(),
+            owner: rental.owner.toString(),
+
+            renter: rental.renter.toString(),
+            startTime: rental.startTime,
+            endTime: rental.endTime,
+
             pricePerHour: rental.pricePerHour.toString(),
             collateralAmount: rental.collateralAmount.toString(),
-            metadata: nftDetail
+            isFractional: rental.isFractional,
+            collateralToken: rental.collateralToken.toString(),
+
+            pendingWithdrawal: rental.pendingWithdrawal,
+
+            metadata: nftDetail || null
           };
+
           rentalList.push(rentalObj);
         }
       } catch (err) {
@@ -197,7 +216,7 @@ async function loadRentals() {
     }
 
     rentals.value = [...rentalList]; // Ensures reactivity
-    console.log("Updated Rentals:", rentals.value);
+    // console.log("Updated Rentals:", rentals.value);
   } catch (error) {
     console.error("Error calling getRentalCounter():", error);
     // @ts-ignore
@@ -238,8 +257,8 @@ onMounted(async () => {
     nftFlexContract = new ethers.Contract(contracts.NFTFlex, NFTFlexABI, signer);
     simpleNFTContract = new ethers.Contract(contracts.SimpleNFT, SimpleNFTABI, signer);
 
-    console.log("NFTFlex Contract initialized:", nftFlexContract);
-    console.log("SimpleNFT Contract initialized:", simpleNFTContract);
+    // console.log("NFTFlex Contract initialized:", nftFlexContract);
+    // console.log("SimpleNFT Contract initialized:", simpleNFTContract);
     await loadRentals();
   } catch (error) {
     console.error("Error initializing contract:", error);
@@ -269,8 +288,12 @@ const createRental = async () => {
 
 const rentNFT = async (rentalId: number) => {
   try {
-    // const duration = prompt('Enter rental duration (in hours):');
-    const duration = 2;
+    if (!nftFlexContract) {
+      alert("Contract not found!");
+      return;
+    }
+
+    const duration = prompt('Enter rental duration (in minutes):');
     if (!duration) {
       alert("Must put a valid duration");
       return;
@@ -300,93 +323,69 @@ const rentNFT = async (rentalId: number) => {
     const totalPrice = pricePerHour * BigInt(rentalDuration);
     const totalPayment = totalPrice + collateralAmount;
 
-    console.log("Rental Duration:", rentalDuration);
-    console.log("Price Per Hour:", pricePerHour.toString());
-    console.log("Collateral Amount:", collateralAmount.toString());
-    console.log("Total Payment:", totalPayment.toString());
+    // console.log("Rental Duration:", rentalDuration);
+    // console.log("Price Per Hour:", pricePerHour.toString());
+    // console.log("Collateral Amount:", collateralAmount.toString());
+    // console.log("Total Payment:", totalPayment.toString());
 
 
     // Send the transaction
     const tx = await nftFlexContract?.rentNFT(rentalId, rentalDuration, { value: totalPayment.toString() });
-    const receipt = await tx?.wait();
+    const eventSignature = "NFTFlex__RentalStarted(uint256,address,uint256,uint256,uint256)";
+    const success = await verifyEvent(tx, nftFlexContract, eventSignature);
 
-    // Parse the event manually using the contract's ABI
-    if (receipt && nftFlexContract) {
-      const eventSignature = "NFTFlex__RentalStarted(uint256,address,uint256,uint256,uint256)";
-      const eventTopic = ethers.id(eventSignature);
 
-      // Find the event log in the receipt
-      const eventLog = receipt.logs?.find((log: any) => log.topics[0] === eventTopic);
 
-      if (eventLog) {
-        // Decode the event log
-        const decodedEvent = nftFlexContract.interface.parseLog(eventLog);
-        if (decodedEvent) {
-          const [rentalIdEvent, renter, startTime, endTime, collateralAmountEvent] = decodedEvent.args;
-          console.log("Rental Started Event Confirmed:");
-          console.log("Rental ID:", rentalIdEvent.toString());
-          console.log("Renter:", renter);
-          console.log("Start Time:", startTime.toString());
-          console.log("End Time:", endTime.toString());
-          console.log("Collateral Amount:", collateralAmountEvent.toString());
-          alert('NFT rented successfully! Event confirmed.');
-        } else {
-          console.error("Failed to decode NFTFlex__RentalStarted event.");
-          alert('NFT rented successfully, but event decoding failed.');
-        }
-      } else {
-        console.error("NFTFlex__RentalStarted event not found in transaction receipt.");
-        alert('NFT rented successfully, but event confirmation failed.');
-      }
-    }
-
-    await loadRentals();
+    if (success) await loadRentals();
   } catch (error: any) {
-    console.error('Error renting NFT:', error);
-    // Decode the custom error
-    if (error.data) {
-      try {
-        const decodedError = nftFlexContract?.interface.parseError(error.data);
-        if (decodedError) {
-          alert(`Transaction Failed: ${decodedError.name}`);
-          return;
-        }
-      } catch (decodeError) {
-        console.error('Error decoding custom error:', decodeError);
-      }
-    }
-
-    // Fallback to generic error message
-    if (error.reason) {
-      alert(`Transaction Failed: ${error.reason}`);
-    } else {
-      alert(`Transaction Reverted: ${error.message}`);
-    }
+    handleTransactionError(error, nftFlexContract);
   }
 };
 
 
 const endRental = async (rentalId: number) => {
   try {
-    const tx = await nftFlexContract?.endRental(rentalId);
-    await tx?.wait();
-    alert('Rental ended successfully!');
-    await loadRentals();
+    if (!nftFlexContract) {
+      alert("Contract not found!");
+      return;
+    }
+
+    const rental = rentals.value.find(r => r.id === rentalId); // Assuming rentals is an array containing rental data
+
+    console.log("User Address:", userAddress.value);
+    console.log("Rental Renter:", rental.renter);
+    const signerAddress = await signer.getAddress();
+    console.log("Signer Address:", signerAddress);
+
+    if (!rental) {
+      alert("Rental not found!");
+      return;
+    }
+
+    if (rental.renter !== userAddress.value) {
+      alert("You are not the renter of this NFT!");
+      return;
+    }
+
+    const tx = await nftFlexContract.endRental(rentalId);
+    const eventSignature = "NFTFlex__RentalEnded(uint256,address)";
+    const success = await verifyEvent(tx, nftFlexContract, eventSignature);
+
+    if (success) await loadRentals();
   } catch (error) {
-    console.error('Error ending rental:', error);
-    alert('Failed to end rental. Check the console for details.');
+    handleTransactionError(error, nftFlexContract);
   }
 };
+
 
 const withdrawEarnings = async (rentalId: number) => {
   try {
     const tx = await nftFlexContract?.withdrawEarnings(rentalId);
-    await tx?.wait();
-    alert('Earnings withdrawn successfully!');
-    await loadRentals();
+    const eventSignature = "NFTFlex__EarningsWithdrawn(uint256,address,uint256)";
+    const success = await verifyEvent(tx, nftFlexContract, eventSignature);
+    if (success) await loadRentals();
   } catch (error) {
-    console.error('Error withdrawing earnings:', error);
-    alert('Failed to withdraw earnings. Check the console for details.');
+    handleTransactionError(error, nftFlexContract);
   }
 };
 
