@@ -309,7 +309,37 @@ const rentNFT = async (rentalId: number) => {
     // Send the transaction
     const tx = await nftFlexContract?.rentNFT(rentalId, rentalDuration, { value: totalPayment.toString() });
     const receipt = await tx?.wait();
-    
+
+    // Parse the event manually using the contract's ABI
+    if (receipt && nftFlexContract) {
+      const eventSignature = "NFTFlex__RentalStarted(uint256,address,uint256,uint256,uint256)";
+      const eventTopic = ethers.id(eventSignature);
+
+      // Find the event log in the receipt
+      const eventLog = receipt.logs?.find((log: any) => log.topics[0] === eventTopic);
+
+      if (eventLog) {
+        // Decode the event log
+        const decodedEvent = nftFlexContract.interface.parseLog(eventLog);
+        if (decodedEvent) {
+          const [rentalIdEvent, renter, startTime, endTime, collateralAmountEvent] = decodedEvent.args;
+          console.log("Rental Started Event Confirmed:");
+          console.log("Rental ID:", rentalIdEvent.toString());
+          console.log("Renter:", renter);
+          console.log("Start Time:", startTime.toString());
+          console.log("End Time:", endTime.toString());
+          console.log("Collateral Amount:", collateralAmountEvent.toString());
+          alert('NFT rented successfully! Event confirmed.');
+        } else {
+          console.error("Failed to decode NFTFlex__RentalStarted event.");
+          alert('NFT rented successfully, but event decoding failed.');
+        }
+      } else {
+        console.error("NFTFlex__RentalStarted event not found in transaction receipt.");
+        alert('NFT rented successfully, but event confirmation failed.');
+      }
+    }
+
     await loadRentals();
   } catch (error: any) {
     console.error('Error renting NFT:', error);
