@@ -146,7 +146,7 @@ contract NFTFlex {
         // Assign renter and start rental
         rental.renter = msg.sender;
         rental.startTime = block.timestamp;
-        rental.endTime = block.timestamp + (_duration * 1 hours); // Permanent hours
+        rental.endTime = block.timestamp + (_duration * 1 minutes); // Permanent hours
         rental.pendingWithdrawal = true;
 
         emit NFTFlex__RentalStarted(_rentalId, msg.sender, rental.startTime, rental.endTime, collateral);
@@ -227,7 +227,7 @@ contract NFTFlex {
         }
 
         // Calculate total earnings: price per hour * number of hours rented
-        uint256 totalEarnings = rental.pricePerHour * ((rental.endTime - rental.startTime) / 1 hours); // Permanent hours
+        uint256 totalEarnings = rental.pricePerHour * ((rental.endTime - rental.startTime) / 1 minutes); // Permanent hours
 
         // Ensure there are earnings to withdraw
         if (totalEarnings == 0) {

@@ -352,10 +352,11 @@ const endRental = async (rentalId: number) => {
 
     const rental = rentals.value.find(r => r.id === rentalId); // Assuming rentals is an array containing rental data
 
-    console.log("User Address:", userAddress.value);
-    console.log("Rental Renter:", rental.renter);
+    // console.log("User Address:", userAddress.value);
+    // console.log("Rental:", rental);
     const signerAddress = await signer.getAddress();
-    console.log("Signer Address:", signerAddress);
+    // console.log("Signer Address:", signerAddress);
+    
 
     if (!rental) {
       alert("Rental not found!");
